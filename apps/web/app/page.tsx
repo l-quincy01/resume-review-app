@@ -20,5 +20,5 @@ const ThemeImage = (props: Props) => {
 };
 
 export default function Home() {
-  return <></>;
+  return <HeroSection />;
 }

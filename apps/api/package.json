@@ -1,0 +1,10 @@
+{
+  "name": "api",
+  "private": true,
+  "scripts": {
+    "dev": "dotnet watch run",
+    "build": "dotnet build",
+    "test": "dotnet test",
+    "clean": "dotnet clean"
+  }
+}

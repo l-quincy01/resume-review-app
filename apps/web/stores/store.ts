@@ -1,26 +1,3 @@
-// import { create } from "zustand";
-
-// type AIModelState = {
-//   aiModel: string;
-//   setAIModel: (model: string) => void;
-// };
-
-// export const useAIModelStore = create<AIModelState>((set) => ({
-//   aiModel: "gpt-4o-search-preview-2025-03-11",
-//   setAIModel: (model) => set({ aiModel: model }),
-// }));
-
-// type TargetJobDescriptionState = {
-//   jobDescription: string;
-//   setJobDescription: (description: string) => void;
-// };
-
-// export const useJobDescriptionStore = create<TargetJobDescriptionState>(
-//   (set) => ({
-//     jobDescription: "",
-//     setJobDescription: (description) => set({ jobDescription: description }),
-//   })
-// );
 import { create } from "zustand";
 
 type AIModelState = {
@@ -44,7 +21,7 @@ type CheckJobListings = {
 };
 
 export const useAIModelStore = create<AIModelState>((set) => ({
-  aiModel: "gpt-4.1-mini",
+  aiModel: "gpt-4o",
   setAIModel: (model) => set({ aiModel: model }),
 }));
 

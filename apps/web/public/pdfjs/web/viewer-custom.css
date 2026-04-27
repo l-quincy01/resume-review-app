@@ -1,0 +1,30 @@
+/* Remove the view-switcher row in the sidebar header */
+#toolbarSidebar { display: none !important; }
+#sidebarContent { top: 0 !important; }
+
+#pageRotateCcw,
+#viewBookmarkSeparator,
+#viewBookmark,
+#presentationMode,
+#currentOutlineItem,
+#editorInk,
+#editorHighlightVisibility,
+#editorHighlightThickness,
+#printButton,
+#editorStamp,
+#editorFreeText,
+#imageAltTextSettings,
+#scrollWrapped,
+#secondaryPrint,
+#cursorHandTool,
+#secondaryOpenFile,
+#secondaryPresentationMode,
+#secondaryHandTool,
+#secondaryScrollWrapped,
+#documentProperties {
+  display: none !important;
+}
+/* 
+#toolbarContainer{
+  background-color: ;
+} */

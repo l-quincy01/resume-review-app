@@ -1,0 +1,56 @@
+name: API
+
+on:
+  pull_request:
+    paths:
+      - apps/api/**
+      - apps/api.Tests/**
+      - resume-tracker.sln
+      - .github/workflows/api.yml
+  push:
+    branches:
+      - main
+    paths:
+      - apps/api/**
+      - apps/api.Tests/**
+      - resume-tracker.sln
+      - .github/workflows/api.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-build-test:
+    name: api-build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore resume-tracker.sln
+
+      - name: Build
+        run: dotnet build resume-tracker.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test resume-tracker.sln --configuration Release --no-build --logger trx --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore

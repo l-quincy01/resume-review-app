@@ -4,7 +4,6 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ResumeReview.Api.Options;
 using ResumeReview.Api.Services.Providers.OpenAI;
-using ResumeReview.Api.Services.ResumeReview;
 using ResumeReview.Api.Services.Providers;
 
 namespace ResumeReview.Api.Services.Ai.Providers.OpenAi;
@@ -13,18 +12,20 @@ public sealed class OpenAiProviderClient : IAiProviderClient
 {
     private readonly HttpClient _httpClient;
     private readonly OpenAiOptions _options;
+    private readonly OpenAiRetryPolicy _retryPolicy;
     private readonly ILogger<OpenAiProviderClient> _logger;
 
     public OpenAiProviderClient(
         HttpClient httpClient,
         IOptions<OpenAiOptions> options,
+        OpenAiRetryPolicy retryPolicy,
         ILogger<OpenAiProviderClient> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _retryPolicy = retryPolicy;
         _logger = logger;
 
-        _httpClient.Timeout = TimeSpan.FromMinutes(10);
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
         _httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _options.ApiKey);
@@ -39,15 +40,23 @@ public sealed class OpenAiProviderClient : IAiProviderClient
         if (fileStream.CanSeek)
             fileStream.Position = 0;
 
-        using var multipart = new MultipartFormDataContent();
+        using var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream, cancellationToken);
+        var fileBytes = memoryStream.ToArray();
 
-        var fileContent = new StreamContent(fileStream);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        using var response = await _retryPolicy.SendAsync(
+            async token =>
+            {
+                using var multipart = new MultipartFormDataContent();
+                using var fileContent = new ByteArrayContent(fileBytes);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+                multipart.Add(new StringContent("user_data"), "purpose");
+                multipart.Add(fileContent, "file", fileName);
 
-        multipart.Add(new StringContent("user_data"), "purpose");
-        multipart.Add(fileContent, "file", fileName);
-
-        using var response = await _httpClient.PostAsync("files", multipart, cancellationToken);
+                return await _httpClient.PostAsync("files", multipart, token);
+            },
+            "file upload",
+            cancellationToken);
         var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -74,9 +83,11 @@ public sealed class OpenAiProviderClient : IAiProviderClient
         object schema,
         CancellationToken cancellationToken = default)
     {
+        var resolvedModel = ResolveModel(model);
+
         var requestBody = new
         {
-            model = string.IsNullOrWhiteSpace(model) ? "gpt-4.1-mini" : model,
+            model = resolvedModel,
             input = new object[]
             {
                 new
@@ -91,7 +102,7 @@ public sealed class OpenAiProviderClient : IAiProviderClient
             },
             text = new
             {
-                verbosity = model == "gpt-4.1-mini" ? "medium" : "low",
+                verbosity = resolvedModel == _options.DefaultModel ? "medium" : "low",
                 format = new
                 {
                     type = "json_schema",
@@ -103,11 +114,16 @@ public sealed class OpenAiProviderClient : IAiProviderClient
         };
 
         var json = JsonSerializer.Serialize(requestBody);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
-
         _logger.LogInformation("Sending OpenAI request for schema {SchemaName}", schemaName);
 
-        using var response = await _httpClient.PostAsync("responses", content, cancellationToken);
+        using var response = await _retryPolicy.SendAsync(
+            async token =>
+            {
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                return await _httpClient.PostAsync("responses", content, token);
+            },
+            $"structured request '{schemaName}'",
+            cancellationToken);
         var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -129,5 +145,25 @@ public sealed class OpenAiProviderClient : IAiProviderClient
             {
                 PropertyNameCaseInsensitive = true
             }) ?? throw new InvalidOperationException($"Failed to deserialize '{schemaName}' response.");
+    }
+
+    private string ResolveModel(string model)
+    {
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            return _options.DefaultModel;
+        }
+
+        if (_options.AllowedModels.Contains(model, StringComparer.OrdinalIgnoreCase))
+        {
+            return model;
+        }
+
+        _logger.LogWarning(
+            "Requested model {Model} is not allowed. Falling back to {DefaultModel}.",
+            model,
+            _options.DefaultModel);
+
+        return _options.DefaultModel;
     }
 }

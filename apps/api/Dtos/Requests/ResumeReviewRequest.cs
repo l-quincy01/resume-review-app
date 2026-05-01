@@ -6,6 +6,7 @@ namespace ResumeReview.Api.Dtos.Requests;
 public class ResumeReviewRequest
 {
     [Required]
+    [MaxLength(64)]
     public string AiModel { get; set; } = string.Empty;
 
     [Required]

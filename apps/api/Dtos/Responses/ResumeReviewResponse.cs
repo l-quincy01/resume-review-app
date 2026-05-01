@@ -9,4 +9,5 @@ public class ResumeReviewResponse
     public AtsContent AtsContent { get; set; } = new();
     public SpellingAndGrammar SpellingAndGrammar { get; set; } = new();
     public JobSearchProfile JobSearchProfile { get; set; } = new();
+    public List<string> Warnings { get; set; } = [];
 }

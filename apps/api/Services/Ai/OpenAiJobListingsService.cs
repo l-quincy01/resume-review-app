@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using ResumeReview.Api.Options;
 using ResumeReview.Api.Models;
+using ResumeReview.Api.Services.Providers.OpenAI;
 
 namespace ResumeReview.Api.Services.Ai;
 
@@ -13,17 +14,19 @@ public class OpenAiJobListingsService : IJobListingsService
     private readonly HttpClient _httpClient;
     private readonly ILogger<OpenAiJobListingsService> _logger;
     private readonly OpenAiOptions _options;
+    private readonly OpenAiRetryPolicy _retryPolicy;
 
     public OpenAiJobListingsService(
         HttpClient httpClient,
         IOptions<OpenAiOptions> options,
+        OpenAiRetryPolicy retryPolicy,
         ILogger<OpenAiJobListingsService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
         _options = options.Value;
+        _retryPolicy = retryPolicy;
 
-        _httpClient.Timeout = Timeout.InfiniteTimeSpan;
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
         _httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _options.ApiKey);
@@ -38,8 +41,7 @@ public class OpenAiJobListingsService : IJobListingsService
 
         var requestBody = new
         {
-            // model = string.IsNullOrWhiteSpace(aiModel) ? "gpt-5-nano" : aiModel,
-            model = "gpt-5-nano",
+            model = _options.JobListingsModel,
             reasoning = new
             {
                 effort = "medium"
@@ -120,8 +122,6 @@ public class OpenAiJobListingsService : IJobListingsService
         };
 
         var json = JsonSerializer.Serialize(requestBody);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
-
         try
         {
             _logger.LogInformation(
@@ -129,7 +129,14 @@ public class OpenAiJobListingsService : IJobListingsService
                 string.Join(", ", profile.Titles ?? []),
                 string.Join(", ", profile.Keywords ?? []));
 
-            using var response = await _httpClient.PostAsync("responses", content, cancellationToken);
+            using var response = await _retryPolicy.SendAsync(
+                async token =>
+                {
+                    using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    return await _httpClient.PostAsync("responses", content, token);
+                },
+                "job listings search",
+                cancellationToken);
             var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -158,6 +165,9 @@ public class OpenAiJobListingsService : IJobListingsService
             }
 
             _logger.LogInformation("Job listings success. Count: {Count}", result.jobListings?.Count ?? 0);
+            result.jobListings = (result.jobListings ?? [])
+                .Take(Math.Max(1, _options.MaxJobListings))
+                .ToList();
 
             return result;
         }
@@ -173,13 +183,13 @@ public class OpenAiJobListingsService : IJobListingsService
         }
     }
 
-    private static string BuildJobListingsPrompt(JobSearchProfile profile)
+    private string BuildJobListingsPrompt(JobSearchProfile profile)
     {
-        var titles = profile.Titles.Count > 0
+        var titles = profile.Titles?.Count > 0
             ? string.Join(", ", profile.Titles)
             : "Software Developer, Backend Developer";
 
-        var keywords = profile.Keywords.Count > 0
+        var keywords = profile.Keywords?.Count > 0
             ? string.Join(", ", profile.Keywords)
             : "Java, Spring Boot, REST API";
 
@@ -187,11 +197,11 @@ public class OpenAiJobListingsService : IJobListingsService
             ? "Junior to Mid-Level"
             : profile.Seniority;
 
-        var locations = profile.Locations.Count > 0
+        var locations = profile.Locations?.Count > 0
             ? string.Join(", ", profile.Locations)
             : "Johannesburg, Pretoria, Gauteng, South Africa, Remote South Africa";
 
-        var exclude = profile.Exclude.Count > 0
+        var exclude = profile.Exclude?.Count > 0
             ? string.Join(", ", profile.Exclude)
             : "Senior, Lead, Manager, Principal, Internship";
 
@@ -200,7 +210,7 @@ Use the derived candidate search profile below and search the web for real, curr
 Return ONLY valid JSON.
 
 TASK:
-Find the 5 best real, currently open job listings for this candidate.
+Find the {{Math.Max(1, _options.MaxJobListings)}} best real, currently open job listings for this candidate.
 
 DERIVED SEARCH PROFILE:
 - Target titles: {{titles}}

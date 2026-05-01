@@ -9,6 +9,7 @@ export interface ResumeAnalysisResponse {
   jobMatch: jobMatch;
   atsContent: atsContent;
   jobSearchProfile: jobSearchProfile;
+  warnings?: string[];
 
 
 

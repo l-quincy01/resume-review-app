@@ -1,4 +1,5 @@
 import { ResumeAnalysisResponse } from "@/types/payload/response-payload";
+import { apiUrl } from "@/lib/api";
 
 export type SubmitResumeReviewInput = {
   aiModel: string;
@@ -20,13 +21,10 @@ export async function submitResumeReview({
     formData.append("jobDescription", jobDescription.trim());
   }
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE}/api/resume-review`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+  const response = await fetch(apiUrl("/api/resume-review"), {
+    method: "POST",
+    body: formData,
+  });
 
   if (!response.ok) {
     let errorMessage = "Failed to submit resume review";

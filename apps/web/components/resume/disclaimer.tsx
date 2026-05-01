@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Disclaimer() {
   return (
-    <div className="flex flex-col gap-2 text-muted-foreground italic  md:max-w-7xl">
+    <div className="flex flex-col gap-2 text-muted-foreground italic ">
       <div className=" text-justify text-xs sm:text-md  p-4">
         AI-generated outputs may contain errors, omissions, or outdated
         information. Review all suggestions carefully before applying them to

@@ -30,7 +30,7 @@ export default function ResumeReviewForm({
 }: ResumeReviewFormProps) {
   return (
     <div className="flex flex-col gap-2 items-end">
-      <Field className="grid grid-cols-2 gap-6">
+      <Field className="flex flex-col lg:grid  lg:grid-cols-2 gap-6">
         <div className="flex flex-col gap-2 items-start">
           <FieldLabel
             htmlFor="job-description"

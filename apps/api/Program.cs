@@ -6,8 +6,12 @@ using ResumeReview.Api.Services.Ai.Providers.OpenAi;
 using ResumeReview.Api.Services.Tasks;
 using ResumeReview.Api.Services.ResumeReview;
 using ResumeReview.Api.Services.Providers;
+using ResumeReview.Api.Services.Providers.OpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
+var openAiOptions = builder.Configuration
+    .GetSection(OpenAiOptions.SectionName)
+    .Get<OpenAiOptions>() ?? new OpenAiOptions();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -32,25 +36,43 @@ builder.Services.AddScoped<JobMatchTask>();
 builder.Services.AddScoped<AtsContentTask>();
 builder.Services.AddScoped<SpellingAndGrammarTask>();
 builder.Services.AddScoped<JobSearchProfileTask>();
+builder.Services.AddSingleton<OpenAiRetryPolicy>();
 
 
 builder.Services.AddHttpClient<IAiProviderClient, OpenAiProviderClient>(client =>
 {
-    client.Timeout = TimeSpan.FromMinutes(10);
+    client.Timeout = TimeSpan.FromSeconds(openAiOptions.RequestTimeoutSeconds);
 });
 
 
 builder.Services.AddHttpClient<IJobListingsService, OpenAiJobListingsService>(client =>
 {
-    client.Timeout = Timeout.InfiniteTimeSpan;
+    client.Timeout = TimeSpan.FromSeconds(openAiOptions.JobListingsTimeoutSeconds);
 });
+
+var allowedOrigins =
+    builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()
+    ?? [];
+
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    allowedOrigins = ["http://localhost:3000"];
+}
+
+if (allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException(
+        "Cors:AllowedOrigins must contain at least one origin outside Development.");
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:3000")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

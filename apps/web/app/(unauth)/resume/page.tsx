@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import ShimmerText from "@/components/ui/shimmer-text";
 import { Typewriter } from "@/components/ui/typewriter";
 import { jobListingWords, loadingWords } from "@/constants/constants";
+import { apiUrl } from "@/lib/api";
 
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,7 +124,7 @@ export default function Page() {
     try {
       setIsLoadingJobListings(true);
 
-      const response = await fetch("http://localhost:5053/api/job-listings", {
+      const response = await fetch(apiUrl("/api/job-listings"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

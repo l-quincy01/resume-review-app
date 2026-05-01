@@ -1,10 +1,7 @@
-
+using System.Collections.Concurrent;
 using ResumeReview.Api.Dtos.Responses;
-
 using ResumeReview.Api.Models;
-
 using ResumeReview.Api.Services.Tasks;
-using ResumeReview.Api.Services.Providers.OpenAI;
 using ResumeReview.Api.Services.Providers;
 
 namespace ResumeReview.Api.Services;
@@ -47,6 +44,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting resume analysis for file {FileName}", fileName);
+        var warnings = new ConcurrentBag<string>();
 
         var fileId = await _aiProvider.UploadFileAsync(
             pdfStream,
@@ -54,39 +52,49 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             contentType ?? "application/pdf",
             cancellationToken);
 
-        var jobRecommendationTask = RunTaskAsync<JobRecommendation>(
+        var jobRecommendationTask = RunTaskAsync(
             aiModel,
             fileId,
             _jobRecommendationTask,
+            "job recommendations",
             null,
+            warnings,
             cancellationToken);
 
-        var jobMatchTask = RunTaskAsync<JobMatch>(
+        var jobMatchTask = RunTaskAsync(
             aiModel,
             fileId,
             _jobMatchTask,
+            "job match",
             jobDescription,
+            warnings,
             cancellationToken);
 
-        var atsContentTask = RunTaskAsync<AtsContent>(
+        var atsContentTask = RunTaskAsync(
             aiModel,
             fileId,
             _atsContentTask,
+            "ATS content",
             null,
+            warnings,
             cancellationToken);
 
-        var spellingTask = RunTaskAsync<SpellingAndGrammar>(
+        var spellingTask = RunTaskAsync(
             aiModel,
             fileId,
             _spellingTask,
+            "spelling and grammar",
             null,
+            warnings,
             cancellationToken);
 
-        var jobSearchProfileTask = RunTaskAsync<JobSearchProfile>(
+        var jobSearchProfileTask = RunTaskAsync(
             aiModel,
             fileId,
             _jobSearchProfileTask,
+            "job search profile",
             null,
+            warnings,
             cancellationToken);
 
         await Task.WhenAll(
@@ -102,23 +110,41 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             JobMatch = await jobMatchTask,
             AtsContent = await atsContentTask,
             SpellingAndGrammar = await spellingTask,
-            JobSearchProfile = await jobSearchProfileTask
+            JobSearchProfile = await jobSearchProfileTask,
+            Warnings = warnings.ToList()
         };
     }
 
-    private Task<T> RunTaskAsync<T>(
+    private async Task<T> RunTaskAsync<T>(
         string aiModel,
         string fileId,
         IAiAnalysisTask<T> task,
+        string sectionName,
         string? jobDescription,
+        ConcurrentBag<string> warnings,
         CancellationToken cancellationToken)
+        where T : new()
     {
-        return _aiProvider.SendStructuredRequestAsync<T>(
-            aiModel,
-            fileId,
-            task.BuildPrompt(jobDescription),
-            task.SchemaName,
-            task.Schema,
-            cancellationToken);
+        try
+        {
+            return await _aiProvider.SendStructuredRequestAsync<T>(
+                aiModel,
+                fileId,
+                task.BuildPrompt(jobDescription),
+                task.SchemaName,
+                task.Schema,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Resume analysis section {SectionName} failed.", sectionName);
+            warnings.Add($"{sectionName} could not be generated. Other report sections may still be usable.");
+
+            return new T();
+        }
     }
 }

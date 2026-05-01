@@ -5,8 +5,7 @@ import Recommendations from "@/components/report-viewer/recommendations/Recommen
 import Ats from "@/components/report-viewer/ats/ats";
 import ModelGrid from "@/components/report-viewer/model/ModelGrid";
 import Disclaimer from "@/components/resume/disclaimer";
-import ResumeHeader from "@/components/resume/resume-header";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import RecommendedListings from "@/components/report-viewer/recommendations/RecommendedListings";
 import JobMatch from "@/components/report-viewer/job/job-match";
 import {
@@ -30,7 +29,6 @@ import RecommendedListingsSkeleton from "@/components/skeletons/RecommendedListi
 import { Progress } from "@/components/ui/progress";
 import ShimmerText from "@/components/ui/shimmer-text";
 import { Typewriter } from "@/components/ui/typewriter";
-import { TextShimmer } from "@/components/ui/text-shimmer";
 import { jobListingWords, loadingWords } from "@/constants/constants";
 
 export default function Page() {
@@ -117,10 +115,10 @@ export default function Page() {
     }
   };
 
-  const submitJobListingsSearch = async (
+  const submitJobListingsSearch = useCallback(async (
     profile: ResumeAnalysisResponse["jobSearchProfile"],
   ) => {
-    if (!profile || isLoadingJobListings) return;
+    if (!profile) return;
 
     try {
       setIsLoadingJobListings(true);
@@ -145,7 +143,7 @@ export default function Page() {
     } finally {
       setIsLoadingJobListings(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!reportData?.jobSearchProfile) {
@@ -156,7 +154,7 @@ export default function Page() {
     if (checkJobListings === true) {
       submitJobListingsSearch(reportData.jobSearchProfile);
     }
-  }, [reportData?.jobSearchProfile]);
+  }, [checkJobListings, reportData?.jobSearchProfile, submitJobListingsSearch]);
 
   const [progress, setProgress] = useState(0);
 
@@ -181,96 +179,48 @@ export default function Page() {
   }, []);
 
   return (
-    <div>
-      <div className="sticky top-0 z-50 bg-background">
+    <div className="flex flex-col items-center justify-center">
+      <div className=" w-full md:max-w-7xl ">
+        {/* <div className="sticky top-0 z-50 bg-background">
         <ResumeHeader />
-      </div>
+      </div> */}
 
-      {!reportData && !isSubmitting ? (
-        <div className="flex flex-col gap-4 justify-center py-12 px-32">
-          <HomeHeader />
+        {!reportData && !isSubmitting ? (
+          <div className="flex flex-col gap-4 justify-center px-8 py-12 md:px-32 ">
+            <HomeHeader />
 
-          <ModelGrid />
+            <ModelGrid />
 
-          <div className="text-sm text-muted-foreground">
-            Tip: For significantly better review quality, we recommend using
-            Claude or GPT reasoning models.
+            <div className="text-sm text-muted-foreground">
+              Tip: For significantly better review quality, we recommend using
+              GPT 5 models.
+            </div>
+
+            <ResumeReviewForm
+              jobDescription={jobDescription}
+              setJobDescription={setJobDescription}
+              checkJobListings={checkJobListings}
+              setCheckJobListings={setCheckJobListings}
+              setResumeFile={setResumeFile}
+              resumeFile={resumeFile}
+              handleSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
           </div>
-
-          <ResumeReviewForm
-            jobDescription={jobDescription}
-            setJobDescription={setJobDescription}
-            checkJobListings={checkJobListings}
-            setCheckJobListings={setCheckJobListings}
-            setResumeFile={setResumeFile}
-            resumeFile={resumeFile}
-            handleSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-          />
-          <Disclaimer />
-        </div>
-      ) : isSubmitting ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex w-full divide-x items-start">
-            <div className="w-1/2 p-2 sticky top-16">
-              <div className="sticky top-16">
-                <PdfViewer pdfUrl={`${fileUrl}`} />
+        ) : isSubmitting ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col-reverse divide-y-accent md:gap-2 gap-8 md:flex-row   w-full md:divide-x items-start">
+              <div className="w-1/2 p-2 sticky top-16">
+                <div className="sticky top-16">
+                  <PdfViewer pdfUrl={`${fileUrl}`} />
+                </div>
               </div>
-            </div>
 
-            <div className="w-1/2 p-2 flex flex-col divide-y">
-              <div className="w-full flex flex-col items-start justify-center px-12 py-2">
-                <ShimmerText className="text-muted-foreground text-sm">
-                  <Typewriter
-                    words={loadingWords}
-                    speed={40}
-                    delayBetweenWords={2000}
-                    cursor={false}
-                  />
-                </ShimmerText>
-
-                <Progress value={progress} className="w-full" />
-              </div>
-              <AtsHeaderSkeleton />
-              <AtsContentSkeleton />
-              <JobMatchSkeleton />
-              <RecommendationsSkeleton />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <div className="flex w-full divide-x items-start">
-            <div className="w-1/2 p-2 sticky top-16">
-              <div className="sticky top-16">
-                <PdfViewer pdfUrl={`${fileUrl}`} />
-              </div>
-            </div>
-
-            <div className="w-1/2 p-2 flex flex-col divide-y">
-              {reportData?.atsContent && (
-                <Ats
-                  atsReport={reportData.atsContent}
-                  spellingAndGrammar={reportData.spellingAndGrammar}
-                />
-              )}
-
-              {reportData?.jobMatch &&
-                reportData.jobMatch.overallScore !== 0 && (
-                  <JobMatch jobMatch={reportData.jobMatch} />
-                )}
-
-              {reportData?.jobRecommendation && (
-                <Recommendations
-                  jobRecommendation={reportData.jobRecommendation}
-                />
-              )}
-
-              {isLoadingJobListings && (
-                <div className="w-full flex flex-col gap-2 items-start justify-center px-12 py-2">
+              <div className="w-1/2 p-2 flex flex-col divide-y">
+                <div className="w-full flex flex-col items-start justify-center px-12 py-2">
                   <ShimmerText className="text-muted-foreground text-sm">
                     <Typewriter
-                      words={jobListingWords}
+                      words={loadingWords}
                       speed={40}
                       delayBetweenWords={2000}
                       cursor={false}
@@ -278,20 +228,70 @@ export default function Page() {
                   </ShimmerText>
 
                   <Progress value={progress} className="w-full" />
-                  <RecommendedListingsSkeleton />
                 </div>
-              )}
-
-              {jobListings?.jobListings &&
-                jobListings.jobListings.length > 0 && (
-                  <RecommendedListings jobListings={jobListings.jobListings} />
-                )}
-
-              <Disclaimer />
+                <AtsHeaderSkeleton />
+                <AtsContentSkeleton />
+                <JobMatchSkeleton />
+                <RecommendationsSkeleton />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col-reverse divide-y-accent md:gap-2 gap-8 md:flex-row   w-full md:divide-x items-start">
+              <div className=" w-full md:w-1/2 md:p-2 md:sticky md:top-16">
+                <div className="sticky top-16">
+                  <PdfViewer pdfUrl={`${fileUrl}`} />
+                </div>
+              </div>
+
+              <div className=" md:w-1/2 md:p-2 flex flex-col divide-y">
+                {reportData?.atsContent && (
+                  <Ats
+                    atsReport={reportData.atsContent}
+                    spellingAndGrammar={reportData.spellingAndGrammar}
+                  />
+                )}
+
+                {reportData?.jobMatch &&
+                  reportData.jobMatch.overallScore !== 0 && (
+                    <JobMatch jobMatch={reportData.jobMatch} />
+                  )}
+
+                {reportData?.jobRecommendation && (
+                  <Recommendations
+                    jobRecommendation={reportData.jobRecommendation}
+                  />
+                )}
+
+                {isLoadingJobListings && (
+                  <div className="w-full flex flex-col gap-2 items-start justify-center px-12 py-2">
+                    <ShimmerText className="text-muted-foreground text-sm">
+                      <Typewriter
+                        words={jobListingWords}
+                        speed={40}
+                        delayBetweenWords={2000}
+                        cursor={false}
+                      />
+                    </ShimmerText>
+
+                    <Progress value={progress} className="w-full" />
+                    <RecommendedListingsSkeleton />
+                  </div>
+                )}
+
+                {jobListings?.jobListings &&
+                  jobListings.jobListings.length > 0 && (
+                    <RecommendedListings
+                      jobListings={jobListings.jobListings}
+                    />
+                  )}
+              </div>
+            </div>
+          </div>
+        )}
+        <Disclaimer />
+      </div>
     </div>
   );
 }

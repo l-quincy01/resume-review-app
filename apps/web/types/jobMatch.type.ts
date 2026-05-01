@@ -15,6 +15,6 @@ export interface targetJobMatch {
 export interface jobMatch {
   name?: string;
   targetJob: targetJobMatch[];
-  // jobDescription: string;
+  jobDescription?: string;
   overallScore: number;
 }

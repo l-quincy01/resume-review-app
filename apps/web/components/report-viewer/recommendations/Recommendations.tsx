@@ -10,6 +10,8 @@ const TAG_COLORS: Record<
   string
 > = {
   jobTitles: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  roles:
+    "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
 
   responsibilities:
     "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
@@ -18,6 +20,8 @@ const TAG_COLORS: Record<
   industry: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
   hardSkills: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
   softSkills: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
+  workAndTeamEnvironment:
+    "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
 
   companySizeFit:
     "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
@@ -30,12 +34,14 @@ const SECTION_LABELS: Record<
   string
 > = {
   jobTitles: "Job Titles",
+  roles: "Roles",
 
   responsibilities: "Responsibilities",
   seniority: "Seniority",
   industry: "Industry",
   hardSkills: "Hard Skills",
   softSkills: "Soft Skills",
+  workAndTeamEnvironment: "Work & Team Environment",
 
   companySizeFit: "Company Size Fit",
   careerTrack: "Career Track",
@@ -84,7 +90,7 @@ export default function Recommendations({ jobRecommendation }: Props) {
         <TagSection
           key={key}
           label={SECTION_LABELS[key]}
-          items={jobRecommendation[key]}
+          items={jobRecommendation[key] ?? []}
           colorClass={TAG_COLORS[key]}
         />
       ))}

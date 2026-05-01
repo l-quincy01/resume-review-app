@@ -1,13 +1,13 @@
 export interface JobRecommendation {
   yearsExperience: string;
   jobTitles: string[];
-  // roles: string[];
+  roles: string[];
   responsibilities: string[];
   seniority: string[];
   industry: string[];
   hardSkills: string[];
   softSkills: string[];
-  // workAndTeamEnvironment: string[];
+  workAndTeamEnvironment: string[];
   companySizeFit: string[];
   careerTrack: string[];
 }

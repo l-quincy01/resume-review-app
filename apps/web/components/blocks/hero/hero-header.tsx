@@ -1,39 +1,31 @@
+"use client";
 import React from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
-import { useScroll } from "motion/react";
-import { Logo } from "./hero-logo";
+import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { name: "Features", href: "#link" },
+  // { name: "Features", href: "#link" },
+  { name: "What you get", href: "#link" },
   { name: "How it works", href: "#link" },
-
-  { name: "About", href: "#link" },
 ];
 
 export const HeroHeader = () => {
   const [menuState, setMenuState] = React.useState(false);
-  const [scrolled, setScrolled] = React.useState(false);
 
-  const { scrollYProgress } = useScroll();
+  const path = usePathname();
 
-  React.useEffect(() => {
-    const unsubscribe = scrollYProgress.on("change", (latest) => {
-      setScrolled(latest > 0.05);
-    });
-    return () => unsubscribe();
-  }, [scrollYProgress]);
+  const isReportPage = path === "/resume";
 
   return (
-    <header>
+    <header className="sticky top-0 z-50 bg-background/50 backdrop-blur">
       <nav
         data-state={menuState && "active"}
         className={cn(
-          "group fixed z-20 w-full border-b transition-colors duration-150",
-          scrolled && "bg-background/50 backdrop-blur-3xl"
+          "group relative z-20 w-full border-b transition-colors duration-150 bg-background/50 backdrop-blur",
         )}
       >
         <div className="mx-auto max-w-5xl px-6 transition-all duration-300">
@@ -58,16 +50,26 @@ export const HeroHeader = () => {
 
               <div className="hidden lg:block">
                 <ul className="flex gap-8 text-sm">
-                  {menuItems.map((item, index) => (
-                    <li key={index}>
-                      <Link
-                        href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                      >
-                        <span>{item.name}</span>
-                      </Link>
-                    </li>
-                  ))}
+                  <li>
+                    <Link
+                      href={"/"}
+                      className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                    >
+                      Resume Review<span className="text-xs">ᴮᴱᵀᴬ </span>{" "}
+                    </Link>
+                  </li>
+
+                  {!isReportPage &&
+                    menuItems.map((item, index) => (
+                      <li key={index}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        >
+                          <span>{item.name}</span>
+                        </Link>
+                      </li>
+                    ))}
                 </ul>
               </div>
             </div>
@@ -75,29 +77,36 @@ export const HeroHeader = () => {
             <div className="bg-background group-data-[state=active]:block lg:group-data-[state=active]:flex mb-6 hidden w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
               <div className="lg:hidden">
                 <ul className="space-y-6 text-base">
-                  {menuItems.map((item, index) => (
-                    <li key={index}>
-                      <Link
-                        href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                      >
-                        <span>{item.name}</span>
-                      </Link>
-                    </li>
-                  ))}
+                  <li>
+                    <Link
+                      href={"/"}
+                      className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                    >
+                      Resume Review<span className="text-xs">ᴮᴱᵀᴬ </span>{" "}
+                    </Link>
+                  </li>
+
+                  {!isReportPage &&
+                    menuItems.map((item, index) => (
+                      <li key={index}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        >
+                          <span>{item.name}</span>
+                        </Link>
+                      </li>
+                    ))}
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                {/* <Button asChild variant="outline" size="sm">
-                  <Link href="#">
-                    <span>Login</span>
-                  </Link>
-                </Button> */}
-                <Button asChild size="sm">
-                  <Link href="#">
-                    <span>Get Started</span>
-                  </Link>
-                </Button>
+                {!isReportPage && (
+                  <Button asChild size="sm">
+                    <Link href="/resume">
+                      <span>Scan your resume</span>
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>

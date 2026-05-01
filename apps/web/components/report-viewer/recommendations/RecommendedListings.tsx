@@ -1,5 +1,5 @@
-import { jobListing, jobListings } from "@/types/jobListing.type";
-import { ArrowUpRight, Link, Link2 } from "lucide-react";
+import { jobListing } from "@/types/jobListing.type";
+import { ArrowUpRight } from "lucide-react";
 import React from "react";
 
 interface props {
@@ -26,7 +26,7 @@ export default function RecommendedListings({ jobListings }: props) {
           </div>
 
           <div>
-            <span className="font-semibold">Why it's great</span>
+            <span className="font-semibold">Why it&apos;s great</span>
             <div className="text-xs">{listing.whyItsGreat}</div>
           </div>
 

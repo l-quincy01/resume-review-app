@@ -26,6 +26,8 @@ coverage
 out/
 build
 dist
+[Bb]in/
+[Oo]bj/
 
 
 # Debug

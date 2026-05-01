@@ -1,0 +1,26 @@
+import { expect, test } from "@playwright/test";
+import { pdfBuffer } from "./fixtures/resumeReview";
+
+test.describe("resume review form", () => {
+  test("renders model choices and upload controls", async ({ page }) => {
+    await page.goto("/resume");
+
+    await expect(page.getByText("GPT-4.1 Mini")).toBeVisible();
+    await expect(page.getByText("GPT-5 Mini")).toBeVisible();
+    await expect(page.getByText("GPT-5.4")).toBeVisible();
+    await expect(page.getByLabel("Paste A Job Description For Your Desired Job")).toBeVisible();
+    await expect(page.getByLabel("Upload CV")).toHaveAttribute("accept", "application/pdf,.pdf");
+  });
+
+  test("shows the selected PDF file name", async ({ page }) => {
+    await page.goto("/resume");
+
+    await page.getByLabel("Upload CV").setInputFiles({
+      name: "resume.pdf",
+      mimeType: "application/pdf",
+      buffer: pdfBuffer,
+    });
+
+    await expect(page.getByText("Selected file: resume.pdf")).toBeVisible();
+  });
+});

@@ -21,7 +21,7 @@ type CheckJobListings = {
 };
 
 export const useAIModelStore = create<AIModelState>((set) => ({
-  aiModel: "gpt-4o",
+  aiModel: "gpt-4.1-mini",
   setAIModel: (model) => set({ aiModel: model }),
 }));
 

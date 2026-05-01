@@ -18,7 +18,6 @@ export default function AtsContent({ atsContent, spellingAndGrammar }: props) {
     <div className="flex flex-col ">
       <Accordion
         type="multiple"
-        collapsible={true}
         className="w-full border-none bg-transparent  "
       >
         {atsContent.content.map((item, index) => (
@@ -122,7 +121,6 @@ export default function AtsContent({ atsContent, spellingAndGrammar }: props) {
 
       <Accordion
         type="multiple"
-        collapsible={true}
         className="w-full border-none bg-transparent  "
       >
         <AccordionItem

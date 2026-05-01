@@ -18,10 +18,6 @@ const mainVariant = {
   },
 };
 
-interface FileUploadProps {
-  onFileSelect: (file: File | null) => void;
-}
-
 export function FileUpload({
   onChange,
   maxSize = 5 * 1024 * 1024, // 5MB default

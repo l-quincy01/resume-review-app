@@ -1,8 +1,5 @@
 "use client";
-import { Progress } from "@/components/ui/progress";
 import React from "react";
-import MarkdownPreview from "@uiw/react-markdown-preview";
-import { useTheme } from "next-themes";
 import {
   Accordion,
   AccordionContent,
@@ -16,8 +13,6 @@ interface props {
 }
 
 export default function JobMatch({ jobMatch }: props) {
-  const { systemTheme } = useTheme();
-
   return (
     <div>
       <div className="flex flex-col gap-2 p-2">
@@ -44,7 +39,6 @@ export default function JobMatch({ jobMatch }: props) {
         <div className="flex flex-col gap-2 text-sm">
           <Accordion
             type="multiple"
-            collapsible={true}
             className="w-full border-none bg-transparent  "
           >
             <AccordionItem

@@ -7,11 +7,11 @@ export interface props {
 }
 
 export default function AtsHeader({ atsContent }: props) {
-  let totalScore = atsContent.content
+  const totalScore = atsContent.content
     .map((item) => item.score)
     .reduce((sum, score) => sum + score, 0);
 
-  const avgScore = (totalScore / atsContent.content.length).toFixed(0);
+  const avgScore = Math.round(totalScore / atsContent.content.length);
 
   return (
     <div className="flex flex-col gap-2 p-2">

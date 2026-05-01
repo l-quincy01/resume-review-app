@@ -23,6 +23,7 @@ export const nextJsConfig = [
     ".next/**",
     "out/**",
     "build/**",
+    "public/pdfjs/**",
     "next-env.d.ts",
   ]),
   {

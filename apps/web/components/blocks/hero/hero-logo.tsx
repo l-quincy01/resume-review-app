@@ -1,8 +1,3 @@
-import React from "react";
-import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 import { cn } from "@/lib/utils";
 
 export const Logo = ({ className }: { className?: string }) => {

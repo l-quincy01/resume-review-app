@@ -21,7 +21,7 @@ const mainVariant = {
 export function FileUpload({
   onChange,
   maxSize = 5 * 1024 * 1024, // 5MB default
-  accept = ".pdf",
+  accept = "application/pdf,.pdf",
 }: {
   onChange?: (file: File | null) => void;
   maxSize?: number;
@@ -59,15 +59,7 @@ export function FileUpload({
     onDropRejected: () => {
       setError("Invalid file type or size");
     },
-    accept: accept
-      ? accept.split(",").reduce(
-          (acc, type) => {
-            acc[type.trim()] = [];
-            return acc;
-          },
-          {} as Record<string, string[]>
-        )
-      : undefined,
+    accept: { "application/pdf": [".pdf"] },
     maxSize,
   });
 
@@ -85,7 +77,7 @@ export function FileUpload({
       >
         <input
           ref={fileInputRef}
-          id="file-upload-handle"
+          id="resume-upload"
           type="file"
           onChange={(e) =>
             e.target.files && handleFileChange(Array.from(e.target.files))

@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "dotnet watch run",
     "build": "dotnet build",
-    "test": "dotnet test",
+    "test": "dotnet test ../../resume-tracker.sln",
     "clean": "dotnet clean"
   }
 }

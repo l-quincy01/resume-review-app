@@ -40,3 +40,9 @@ yarn-error.log*
 **/appsettings.development.json
 
 .npmrc
+
+
+!pdfjs/build/
+!pdfjs/build/**
+
+report.md

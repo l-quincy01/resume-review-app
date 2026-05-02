@@ -1,0 +1,151 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_web:
+        description: Deploy the Next.js web app
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      deploy_api:
+        description: Deploy the ASP.NET API
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deployment-build:
+    name: deployment-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+
+    env:
+      CI: true
+      NEXT_PUBLIC_API_BASE: ${{ vars.NEXT_PUBLIC_API_BASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Validate
+        run: |
+          pnpm lint
+          pnpm check-types
+          pnpm test
+
+      - name: Build web and docs
+        run: pnpm build
+
+      - name: Publish API
+        run: dotnet publish apps/api/api.csproj --configuration Release --output artifacts/api
+
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-publish
+          path: artifacts/api
+
+  deploy-web:
+    name: deploy-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deployment-build
+    environment: production
+    if: github.event_name == 'push' || inputs.deploy_web == 'true'
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NEXT_PUBLIC_API_BASE: ${{ vars.NEXT_PUBLIC_API_BASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel environment
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build Vercel project
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy Vercel project
+        working-directory: apps/web
+        run: pnpm dlx vercel@latest deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+  deploy-api:
+    name: deploy-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deployment-build
+    environment: production
+    if: github.event_name == 'push' || inputs.deploy_api == 'true'
+
+    steps:
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api-publish
+          path: artifacts/api
+
+      - name: Deploy API to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_API_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
+          package: artifacts/api

@@ -31,6 +31,7 @@ import ShimmerText from "@/components/ui/shimmer-text";
 import { Typewriter } from "@/components/ui/typewriter";
 import { jobListingWords, loadingWords } from "@/constants/constants";
 import { apiUrl } from "@/lib/api";
+import { clientLogger } from "@/lib/client-logger";
 
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,8 +109,16 @@ export default function Page() {
       });
 
       setReportData(result);
+      clientLogger.info("resume_review_completed", {
+        aiModel,
+        hasJobDescription: Boolean(jobDescription.trim()),
+        checkJobListings,
+      });
     } catch (error) {
-      console.error(error);
+      clientLogger.error("resume_review_failed", error, {
+        aiModel,
+        hasJobDescription: Boolean(jobDescription.trim()),
+      });
       alert(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setIsSubmitting(false);
@@ -138,8 +147,14 @@ export default function Page() {
 
       const data: JobListingsResponse = await response.json();
       setJobListings(data);
+      clientLogger.info("job_listings_search_completed", {
+        listingCount: data.jobListings.length,
+      });
     } catch (error) {
-      console.error(error);
+      clientLogger.error("job_listings_search_failed", error, {
+        titles: profile.titles,
+        seniority: profile.seniority,
+      });
       setJobListings(null);
     } finally {
       setIsLoadingJobListings(false);

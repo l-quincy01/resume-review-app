@@ -7,11 +7,30 @@ using ResumeReview.Api.Services.Tasks;
 using ResumeReview.Api.Services.ResumeReview;
 using ResumeReview.Api.Services.Providers;
 using ResumeReview.Api.Services.Providers.OpenAI;
+using Serilog;
 
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
 var builder = WebApplication.CreateBuilder(args);
 var openAiOptions = builder.Configuration
     .GetSection(OpenAiOptions.SectionName)
     .Get<OpenAiOptions>() ?? new OpenAiOptions();
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithProperty("Application", "ResumeReview.Api")
+        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+});
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -86,9 +105,31 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+        diagnosticContext.Set("RemoteIpAddress", httpContext.Connection.RemoteIpAddress?.ToString());
+    };
+});
+
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+}
+catch (Exception exception)
+{
+    Log.Fatal(exception, "ResumeReview.Api terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

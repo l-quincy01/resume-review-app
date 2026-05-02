@@ -5,19 +5,9 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
-
-const menuItems = [
-  { name: "What you get", href: "#link" },
-  { name: "How it works", href: "#link" },
-];
 
 export const HeroHeader = () => {
   const [menuState, setMenuState] = React.useState(false);
-
-  const path = usePathname();
-
-  const isReportPage = path === "/resume";
 
   return (
     <header className="sticky top-0 z-50 bg-background/50 backdrop-blur">

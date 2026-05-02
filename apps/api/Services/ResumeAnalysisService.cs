@@ -52,67 +52,74 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             contentType ?? "application/pdf",
             cancellationToken);
 
-        var jobRecommendationTask = RunTaskAsync(
-            aiModel,
-            fileId,
-            _jobRecommendationTask,
-            "job recommendations",
-            null,
-            warnings,
-            cancellationToken);
-
-        var jobMatchTask = RunTaskAsync(
-            aiModel,
-            fileId,
-            _jobMatchTask,
-            "job match",
-            jobDescription,
-            warnings,
-            cancellationToken);
-
-        var atsContentTask = RunTaskAsync(
-            aiModel,
-            fileId,
-            _atsContentTask,
-            "ATS content",
-            null,
-            warnings,
-            cancellationToken);
-
-        var spellingTask = RunTaskAsync(
-            aiModel,
-            fileId,
-            _spellingTask,
-            "spelling and grammar",
-            null,
-            warnings,
-            cancellationToken);
-
-        var jobSearchProfileTask = RunTaskAsync(
-            aiModel,
-            fileId,
-            _jobSearchProfileTask,
-            "job search profile",
-            null,
-            warnings,
-            cancellationToken);
-
-        await Task.WhenAll(
-            jobRecommendationTask,
-            jobMatchTask,
-            atsContentTask,
-            spellingTask,
-            jobSearchProfileTask);
-
-        return new ResumeReviewResponse
+        try
         {
-            JobRecommendation = await jobRecommendationTask,
-            JobMatch = await jobMatchTask,
-            AtsContent = await atsContentTask,
-            SpellingAndGrammar = await spellingTask,
-            JobSearchProfile = await jobSearchProfileTask,
-            Warnings = warnings.ToList()
-        };
+            var jobRecommendationTask = RunTaskAsync(
+                aiModel,
+                fileId,
+                _jobRecommendationTask,
+                "job recommendations",
+                null,
+                warnings,
+                cancellationToken);
+
+            var jobMatchTask = RunTaskAsync(
+                aiModel,
+                fileId,
+                _jobMatchTask,
+                "job match",
+                jobDescription,
+                warnings,
+                cancellationToken);
+
+            var atsContentTask = RunTaskAsync(
+                aiModel,
+                fileId,
+                _atsContentTask,
+                "ATS content",
+                null,
+                warnings,
+                cancellationToken);
+
+            var spellingTask = RunTaskAsync(
+                aiModel,
+                fileId,
+                _spellingTask,
+                "spelling and grammar",
+                null,
+                warnings,
+                cancellationToken);
+
+            var jobSearchProfileTask = RunTaskAsync(
+                aiModel,
+                fileId,
+                _jobSearchProfileTask,
+                "job search profile",
+                null,
+                warnings,
+                cancellationToken);
+
+            await Task.WhenAll(
+                jobRecommendationTask,
+                jobMatchTask,
+                atsContentTask,
+                spellingTask,
+                jobSearchProfileTask);
+
+            return new ResumeReviewResponse
+            {
+                JobRecommendation = await jobRecommendationTask,
+                JobMatch = await jobMatchTask,
+                AtsContent = await atsContentTask,
+                SpellingAndGrammar = await spellingTask,
+                JobSearchProfile = await jobSearchProfileTask,
+                Warnings = warnings.ToList()
+            };
+        }
+        finally
+        {
+            await CleanupUploadedFileAsync(fileId, cancellationToken);
+        }
     }
 
     private async Task<T> RunTaskAsync<T>(
@@ -145,6 +152,27 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             warnings.Add($"{sectionName} could not be generated. Other report sections may still be usable.");
 
             return new T();
+        }
+    }
+
+    private async Task CleanupUploadedFileAsync(
+        string fileId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _aiProvider.DeleteFileAsync(fileId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "OpenAI file cleanup failed after resume analysis. FileId: {FileId}.",
+                fileId);
         }
     }
 }

@@ -21,6 +21,7 @@ test.describe("resume review flow", () => {
       mimeType: "application/pdf",
       buffer: pdfBuffer,
     });
+    await page.getByLabel("Consent to AI resume processing").click();
     await page.getByRole("button", { name: "Submit" }).click();
 
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
@@ -52,6 +53,7 @@ test.describe("resume review flow", () => {
       mimeType: "application/pdf",
       buffer: pdfBuffer,
     });
+    await page.getByLabel("Consent to AI resume processing").click();
     await page.getByRole("button", { name: "Submit" }).click();
 
     await expect(page.getByRole("button", { name: "Submit" })).toBeVisible();

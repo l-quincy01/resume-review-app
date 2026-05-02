@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -12,6 +13,7 @@ interface ResumeReviewFormProps {
   setJobDescription: (value: string) => void;
   checkJobListings: boolean;
   setCheckJobListings: (value: boolean) => void;
+
   setResumeFile: (file: File | null) => void;
   resumeFile: File | null;
   handleSubmit: () => void;
@@ -23,6 +25,7 @@ export default function ResumeReviewForm({
   setJobDescription,
   checkJobListings,
   setCheckJobListings,
+
   setResumeFile,
   resumeFile,
   handleSubmit,
@@ -59,8 +62,25 @@ export default function ResumeReviewForm({
             </div>
           )}
         </div>
-        <div></div>
-        <div className="flex w-full justify-end text-muted-foreground  flex-row items-center gap-2">
+
+        <div className="flex w-full justify-end text-muted-foreground flex-row items-center gap-2">
+          <label className="flex w-full items-start gap-3 text-sm text-muted-foreground">
+            <span>
+              By clicking submit you agree to our
+              <Link href="/privacy" className="underline underline-offset-4">
+                {" "}
+                Privacy Policy
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline underline-offset-4">
+                Terms
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
+        <div className="flex w-full justify-end text-muted-foreground flex-row items-center gap-2">
           Search for Job Listings⁴
           <Checkbox
             checked={checkJobListings}
@@ -75,9 +95,3 @@ export default function ResumeReviewForm({
     </div>
   );
 }
-
-/*
-
-
-
-*/

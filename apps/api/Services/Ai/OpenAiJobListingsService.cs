@@ -125,9 +125,10 @@ public class OpenAiJobListingsService : IJobListingsService
         try
         {
             _logger.LogInformation(
-                "Starting job listings search. Titles: {Titles}, Keywords: {Keywords}",
-                string.Join(", ", profile.Titles ?? []),
-                string.Join(", ", profile.Keywords ?? []));
+                "Starting job listings search. TitleCount: {TitleCount}, KeywordCount: {KeywordCount}, LocationCount: {LocationCount}.",
+                profile.Titles?.Count ?? 0,
+                profile.Keywords?.Count ?? 0,
+                profile.Locations?.Count ?? 0);
 
             using var response = await _retryPolicy.SendAsync(
                 async token =>
@@ -142,9 +143,9 @@ public class OpenAiJobListingsService : IJobListingsService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError(
-                    "OpenAI job listings failed. Status: {Status}. Body: {Body}",
+                    "OpenAI job listings failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
                     response.StatusCode,
-                    responseText);
+                    responseText.Length);
 
                 return new JobListings { jobListings = [] };
             }
@@ -160,7 +161,9 @@ public class OpenAiJobListingsService : IJobListingsService
 
             if (result is null)
             {
-                _logger.LogError("Job listings deserialization returned null. Raw JSON: {Json}", modelJson);
+                _logger.LogError(
+                    "Job listings deserialization returned null. ModelJsonLength: {ModelJsonLength}.",
+                    modelJson.Length);
                 return new JobListings { jobListings = [] };
             }
 

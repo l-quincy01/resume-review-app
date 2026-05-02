@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-  // { name: "Features", href: "#link" },
   { name: "What you get", href: "#link" },
   { name: "How it works", href: "#link" },
 ];
@@ -59,7 +58,7 @@ export const HeroHeader = () => {
                     </Link>
                   </li>
 
-                  {!isReportPage &&
+                  {/* {!isReportPage &&
                     menuItems.map((item, index) => (
                       <li key={index}>
                         <Link
@@ -69,7 +68,7 @@ export const HeroHeader = () => {
                           <span>{item.name}</span>
                         </Link>
                       </li>
-                    ))}
+                    ))} */}
                 </ul>
               </div>
             </div>
@@ -85,7 +84,7 @@ export const HeroHeader = () => {
                       Resume Review<span className="text-xs">ᴮᴱᵀᴬ </span>{" "}
                     </Link>
                   </li>
-
+                  {/* 
                   {!isReportPage &&
                     menuItems.map((item, index) => (
                       <li key={index}>
@@ -96,17 +95,17 @@ export const HeroHeader = () => {
                           <span>{item.name}</span>
                         </Link>
                       </li>
-                    ))}
+                    ))} */}
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                {!isReportPage && (
+                {
                   <Button asChild size="sm">
                     <Link href="/resume">
                       <span>Scan your resume</span>
                     </Link>
                   </Button>
-                )}
+                }
               </div>
             </div>
           </div>

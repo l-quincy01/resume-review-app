@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -12,6 +13,8 @@ interface ResumeReviewFormProps {
   setJobDescription: (value: string) => void;
   checkJobListings: boolean;
   setCheckJobListings: (value: boolean) => void;
+  consentToAiProcessing: boolean;
+  setConsentToAiProcessing: (value: boolean) => void;
   setResumeFile: (file: File | null) => void;
   resumeFile: File | null;
   handleSubmit: () => void;
@@ -23,6 +26,8 @@ export default function ResumeReviewForm({
   setJobDescription,
   checkJobListings,
   setCheckJobListings,
+  consentToAiProcessing,
+  setConsentToAiProcessing,
   setResumeFile,
   resumeFile,
   handleSubmit,
@@ -60,7 +65,7 @@ export default function ResumeReviewForm({
           )}
         </div>
         <div></div>
-        <div className="flex w-full justify-end text-muted-foreground  flex-row items-center gap-2">
+        <div className="flex w-full justify-end text-muted-foreground flex-row items-center gap-2">
           Search for Job Listings⁴
           <Checkbox
             checked={checkJobListings}
@@ -69,7 +74,33 @@ export default function ResumeReviewForm({
         </div>
       </Field>
 
-      <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+      <label className="flex w-full items-start gap-3 text-sm text-muted-foreground">
+        <Checkbox
+          checked={consentToAiProcessing}
+          onCheckedChange={(checked) =>
+            setConsentToAiProcessing(checked === true)
+          }
+          aria-label="Consent to AI resume processing"
+        />
+        <span>
+          I agree that my resume and job description will be sent to the AI
+          provider for analysis. Resumes are not stored by this app. Read the{" "}
+          <Link href="/privacy" className="underline underline-offset-4">
+            Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link href="/terms" className="underline underline-offset-4">
+            Terms
+          </Link>
+          .
+        </span>
+      </label>
+
+      <Button
+        type="button"
+        onClick={handleSubmit}
+        disabled={isSubmitting || !consentToAiProcessing}
+      >
         {isSubmitting ? "Submitting..." : "Submit"}
       </Button>
     </div>

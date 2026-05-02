@@ -37,6 +37,7 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobListings, setIsLoadingJobListings] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [consentToAiProcessing, setConsentToAiProcessing] = useState(false);
   const [reportData, setReportData] = useState<ResumeAnalysisResponse | null>(
     null,
   );
@@ -92,6 +93,12 @@ export default function Page() {
       alert("Please upload your resume PDF.");
       return;
     }
+
+    if (!consentToAiProcessing) {
+      alert("Please consent to AI processing before submitting.");
+      return;
+    }
+
     const url = URL.createObjectURL(resumeFile);
     setFileUrl(url);
 
@@ -217,6 +224,8 @@ export default function Page() {
               setJobDescription={setJobDescription}
               checkJobListings={checkJobListings}
               setCheckJobListings={setCheckJobListings}
+              consentToAiProcessing={consentToAiProcessing}
+              setConsentToAiProcessing={setConsentToAiProcessing}
               setResumeFile={setResumeFile}
               resumeFile={resumeFile}
               handleSubmit={handleSubmit}

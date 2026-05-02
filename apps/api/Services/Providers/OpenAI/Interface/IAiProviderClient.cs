@@ -9,6 +9,10 @@ public interface IAiProviderClient
         string contentType,
         CancellationToken cancellationToken = default);
 
+    Task DeleteFileAsync(
+        string fileId,
+        CancellationToken cancellationToken = default);
+
     Task<T> SendStructuredRequestAsync<T>(
         string model,
         string fileId,

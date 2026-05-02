@@ -61,18 +61,47 @@ public sealed class OpenAiProviderClient : IAiProviderClient
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("OpenAI file upload failed. Status: {Status}. Body: {Body}",
+            _logger.LogError(
+                "OpenAI file upload failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
                 response.StatusCode,
-                responseText);
+                responseText.Length);
 
             throw new InvalidOperationException(
-                $"OpenAI file upload failed: {response.StatusCode} - {responseText}");
+                $"OpenAI file upload failed: {response.StatusCode}.");
         }
 
         using var doc = JsonDocument.Parse(responseText);
 
         return doc.RootElement.GetProperty("id").GetString()
             ?? throw new InvalidOperationException("OpenAI file upload did not return an id.");
+    }
+
+    public async Task DeleteFileAsync(
+        string fileId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _retryPolicy.SendAsync(
+            token => _httpClient.DeleteAsync($"files/{Uri.EscapeDataString(fileId)}", token),
+            "file delete",
+            cancellationToken);
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "OpenAI file cleanup failed. FileId: {FileId}. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
+                fileId,
+                response.StatusCode,
+                responseText.Length);
+
+            throw new InvalidOperationException(
+                $"OpenAI file cleanup failed for file '{fileId}': {response.StatusCode}.");
+        }
+
+        _logger.LogInformation(
+            "OpenAI file cleanup succeeded. FileId: {FileId}. Status: {Status}.",
+            fileId,
+            response.StatusCode);
     }
 
     public async Task<T> SendStructuredRequestAsync<T>(
@@ -128,13 +157,14 @@ public sealed class OpenAiProviderClient : IAiProviderClient
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("OpenAI request failed. Schema: {SchemaName}. Status: {Status}. Body: {Body}",
+            _logger.LogError(
+                "OpenAI request failed. Schema: {SchemaName}. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
                 schemaName,
                 response.StatusCode,
-                responseText);
+                responseText.Length);
 
             throw new InvalidOperationException(
-                $"OpenAI request failed for schema '{schemaName}': {response.StatusCode} - {responseText}");
+                $"OpenAI request failed for schema '{schemaName}': {response.StatusCode}.");
         }
 
         var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);

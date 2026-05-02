@@ -10,6 +10,20 @@ test.describe("resume review form", () => {
     await expect(page.getByText("GPT-5.4")).toBeVisible();
     await expect(page.getByLabel("Paste A Job Description For Your Desired Job")).toBeVisible();
     await expect(page.getByLabel("Upload CV")).toHaveAttribute("accept", "application/pdf,.pdf");
+    await expect(page.getByLabel("Consent to AI resume processing")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+    await expect(page.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+  });
+
+  test("requires consent before enabling submit", async ({ page }) => {
+    await page.goto("/resume");
+
+    const submit = page.getByRole("button", { name: "Submit" });
+    await expect(submit).toBeDisabled();
+
+    await page.getByLabel("Consent to AI resume processing").click();
+
+    await expect(submit).toBeEnabled();
   });
 
   test("shows the selected PDF file name", async ({ page }) => {

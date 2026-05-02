@@ -13,8 +13,7 @@ interface ResumeReviewFormProps {
   setJobDescription: (value: string) => void;
   checkJobListings: boolean;
   setCheckJobListings: (value: boolean) => void;
-  consentToAiProcessing: boolean;
-  setConsentToAiProcessing: (value: boolean) => void;
+
   setResumeFile: (file: File | null) => void;
   resumeFile: File | null;
   handleSubmit: () => void;
@@ -26,8 +25,7 @@ export default function ResumeReviewForm({
   setJobDescription,
   checkJobListings,
   setCheckJobListings,
-  consentToAiProcessing,
-  setConsentToAiProcessing,
+
   setResumeFile,
   resumeFile,
   handleSubmit,
@@ -64,7 +62,24 @@ export default function ResumeReviewForm({
             </div>
           )}
         </div>
-        <div></div>
+
+        <div className="flex w-full justify-end text-muted-foreground flex-row items-center gap-2">
+          <label className="flex w-full items-start gap-3 text-sm text-muted-foreground">
+            <span>
+              By clicking submit you agree to our
+              <Link href="/privacy" className="underline underline-offset-4">
+                {" "}
+                Privacy Policy
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline underline-offset-4">
+                Terms
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
         <div className="flex w-full justify-end text-muted-foreground flex-row items-center gap-2">
           Search for Job Listings⁴
           <Checkbox
@@ -74,41 +89,9 @@ export default function ResumeReviewForm({
         </div>
       </Field>
 
-      <label className="flex w-full items-start gap-3 text-sm text-muted-foreground">
-        <Checkbox
-          checked={consentToAiProcessing}
-          onCheckedChange={(checked) =>
-            setConsentToAiProcessing(checked === true)
-          }
-          aria-label="Consent to AI resume processing"
-        />
-        <span>
-          I agree that my resume and job description will be sent to the AI
-          provider for analysis. Resumes are not stored by this app. Read the{" "}
-          <Link href="/privacy" className="underline underline-offset-4">
-            Privacy Policy
-          </Link>{" "}
-          and{" "}
-          <Link href="/terms" className="underline underline-offset-4">
-            Terms
-          </Link>
-          .
-        </span>
-      </label>
-
-      <Button
-        type="button"
-        onClick={handleSubmit}
-        disabled={isSubmitting || !consentToAiProcessing}
-      >
+      <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
         {isSubmitting ? "Submitting..." : "Submit"}
       </Button>
     </div>
   );
 }
-
-/*
-
-
-
-*/

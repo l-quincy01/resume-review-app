@@ -37,7 +37,7 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobListings, setIsLoadingJobListings] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const [consentToAiProcessing, setConsentToAiProcessing] = useState(false);
+
   const [reportData, setReportData] = useState<ResumeAnalysisResponse | null>(
     null,
   );
@@ -94,11 +94,6 @@ export default function Page() {
       return;
     }
 
-    if (!consentToAiProcessing) {
-      alert("Please consent to AI processing before submitting.");
-      return;
-    }
-
     const url = URL.createObjectURL(resumeFile);
     setFileUrl(url);
 
@@ -132,41 +127,42 @@ export default function Page() {
     }
   };
 
-  const submitJobListingsSearch = useCallback(async (
-    profile: ResumeAnalysisResponse["jobSearchProfile"],
-  ) => {
-    if (!profile) return;
+  const submitJobListingsSearch = useCallback(
+    async (profile: ResumeAnalysisResponse["jobSearchProfile"]) => {
+      if (!profile) return;
 
-    try {
-      setIsLoadingJobListings(true);
+      try {
+        setIsLoadingJobListings(true);
 
-      const response = await fetch(apiUrl("/api/job-listings"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(profile),
-      });
+        const response = await fetch(apiUrl("/api/job-listings"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(profile),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch job listings");
+        if (!response.ok) {
+          throw new Error("Failed to fetch job listings");
+        }
+
+        const data: JobListingsResponse = await response.json();
+        setJobListings(data);
+        clientLogger.info("job_listings_search_completed", {
+          listingCount: data.jobListings.length,
+        });
+      } catch (error) {
+        clientLogger.error("job_listings_search_failed", error, {
+          titles: profile.titles,
+          seniority: profile.seniority,
+        });
+        setJobListings(null);
+      } finally {
+        setIsLoadingJobListings(false);
       }
-
-      const data: JobListingsResponse = await response.json();
-      setJobListings(data);
-      clientLogger.info("job_listings_search_completed", {
-        listingCount: data.jobListings.length,
-      });
-    } catch (error) {
-      clientLogger.error("job_listings_search_failed", error, {
-        titles: profile.titles,
-        seniority: profile.seniority,
-      });
-      setJobListings(null);
-    } finally {
-      setIsLoadingJobListings(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!reportData?.jobSearchProfile) {
@@ -224,8 +220,6 @@ export default function Page() {
               setJobDescription={setJobDescription}
               checkJobListings={checkJobListings}
               setCheckJobListings={setCheckJobListings}
-              consentToAiProcessing={consentToAiProcessing}
-              setConsentToAiProcessing={setConsentToAiProcessing}
               setResumeFile={setResumeFile}
               resumeFile={resumeFile}
               handleSubmit={handleSubmit}

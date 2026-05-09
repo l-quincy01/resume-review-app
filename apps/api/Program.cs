@@ -4,6 +4,7 @@ using ResumeReview.Api.Services.Ai;
 using ResumeReview.Api.Services.Ai.Providers;
 using ResumeReview.Api.Services.Ai.Providers.OpenAi;
 using ResumeReview.Api.Services.Tasks;
+using ResumeReview.Api.Services.AtsEngine;
 using ResumeReview.Api.Services.ResumeReview;
 using ResumeReview.Api.Services.Providers;
 using ResumeReview.Api.Services.Providers.OpenAI;
@@ -45,6 +46,8 @@ builder.Services.Configure<OpenAiOptions>(
 
 
 builder.Services.AddScoped<IResumeReviewService, ResumeReviewService>();
+builder.Services.AddScoped<IResumeTextExtractor, PdfPigResumeTextExtractor>();
+builder.Services.AddScoped<IStandardHeaderValidator, StandardHeaderValidator>();
 
 
 builder.Services.AddScoped<IAiResumeAnalysisService, ResumeAnalysisService>();

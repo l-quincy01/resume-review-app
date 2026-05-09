@@ -271,18 +271,15 @@ export default function Page() {
                     spellingAndGrammar={reportData.spellingAndGrammar}
                   />
                 )}
-
                 {reportData?.jobMatch &&
                   reportData.jobMatch.overallScore !== 0 && (
                     <JobMatch jobMatch={reportData.jobMatch} />
                   )}
-
                 {reportData?.jobRecommendation && (
                   <Recommendations
                     jobRecommendation={reportData.jobRecommendation}
                   />
                 )}
-
                 {isLoadingJobListings && (
                   <div className="w-full flex flex-col gap-2 items-start justify-center px-12 py-2">
                     <ShimmerText className="text-muted-foreground text-sm">
@@ -298,7 +295,6 @@ export default function Page() {
                     <RecommendedListingsSkeleton />
                   </div>
                 )}
-
                 {jobListings?.jobListings &&
                   jobListings.jobListings.length > 0 && (
                     <RecommendedListings

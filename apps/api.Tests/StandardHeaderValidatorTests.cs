@@ -43,6 +43,44 @@ Licences & Certifications
     }
 
     [Fact]
+    public void Validate_WeakAliases_MapToCanonicalHeadersWithReducedCreditAndRecommendation()
+    {
+        var result = CreateValidator().Validate("""
+Profile
+Skills
+Experiences
+Education
+""");
+
+        Assert.Equal(70, result.HeaderQualityScore);
+        Assert.Contains("Summary", result.HeadersFound);
+        Assert.Contains("Work Experience", result.HeadersFound);
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Profile" &&
+            header.MappedTo == "Summary" &&
+            header.RecommendedHeader == "Summary");
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Experiences" &&
+            header.MappedTo == "Work Experience" &&
+            header.RecommendedHeader == "Work Experience");
+    }
+
+    [Fact]
+    public void Validate_StandardHeaderOverridesWeakAliasRecommendation()
+    {
+        var result = CreateValidator().Validate("""
+Profile
+Summary
+Skills
+Work Experience
+Education
+""");
+
+        Assert.Equal(80, result.HeaderQualityScore);
+        Assert.DoesNotContain(result.NonStandardHeaders, header => header.MappedTo == "Summary");
+    }
+
+    [Fact]
     public void Validate_OptionalHeadersAddPointsButMissingOptionalHeadersDoNotReduceRequiredScore()
     {
         var requiredOnly = CreateValidator().Validate("""

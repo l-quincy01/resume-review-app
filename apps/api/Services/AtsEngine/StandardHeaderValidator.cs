@@ -7,6 +7,8 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
 {
     private const int RequiredHeaderPoints = 20;
     private const int OptionalHeaderPoints = 5;
+    private const int WeakRequiredHeaderPoints = 15;
+    private const int WeakOptionalHeaderPoints = 4;
     private const int UnclearHeaderPenalty = -5;
 
     private static readonly string[] RequiredHeaders =
@@ -26,12 +28,10 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         "Volunteer Experience"
     ];
 
-    private static readonly Dictionary<string, string> HeaderAliases = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> StrongHeaderAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Professional Summary"] = "Summary",
         ["Career Summary"] = "Summary",
-        ["Profile"] = "Summary",
-        ["Objective"] = "Summary",
         ["Technical Skills"] = "Skills",
         ["Core Skills"] = "Skills",
         ["Key Skills"] = "Skills",
@@ -47,6 +47,13 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         ["Licences & Certifications"] = "Certifications",
         ["Certificates"] = "Certifications",
         ["Awards & Honours"] = "Awards"
+    };
+
+    private static readonly Dictionary<string, string> WeakHeaderAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Profile"] = "Summary",
+        ["Objective"] = "Summary",
+        ["Experiences"] = "Work Experience"
     };
 
     private static readonly HashSet<string> CanonicalHeaders =
@@ -97,7 +104,7 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
 
     public HeaderValidationResponse Validate(string resumeText)
     {
-        var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var found = new Dictionary<string, HeaderMatch>(StringComparer.OrdinalIgnoreCase);
         var unclear = new List<string>();
         var seenUnclear = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -112,9 +119,9 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
 
             var normalized = NormalizeHeader(line);
 
-            if (TryMapKnownHeader(normalized, out var canonicalHeader))
+            if (TryMapKnownHeader(normalized, line, out var headerMatch))
             {
-                found.Add(canonicalHeader);
+                AddBestHeaderMatch(found, headerMatch);
                 continue;
             }
 
@@ -124,11 +131,7 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
             }
         }
 
-        var foundRequiredCount = RequiredHeaders.Count(found.Contains);
-        var foundOptionalCount = OptionalHeaders.Count(found.Contains);
-        var rawHeaderScore =
-            foundRequiredCount * RequiredHeaderPoints +
-            foundOptionalCount * OptionalHeaderPoints -
+        var rawHeaderScore = found.Values.Sum(GetHeaderPoints) -
             unclear.Count * UnclearHeaderPenalty;
         var headerQualityScore = Math.Clamp(rawHeaderScore, 0, 100);
 
@@ -136,12 +139,21 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         {
             HeaderQualityScore = headerQualityScore,
             HeadersFound = RequiredHeaders.Concat(OptionalHeaders)
-                .Where(found.Contains)
+                .Where(found.ContainsKey)
                 .ToList(),
             HeadersMissing = RequiredHeaders.Concat(OptionalHeaders)
-                .Where(header => !found.Contains(header))
+                .Where(header => !found.ContainsKey(header))
                 .ToList(),
             UnclearHeaders = unclear,
+            NonStandardHeaders = found.Values
+                .Where(match => match.Quality == HeaderMatchQuality.WeakAlias)
+                .Select(match => new NonStandardHeaderResponse
+                {
+                    HeaderFound = match.DetectedHeader,
+                    MappedTo = match.CanonicalHeader,
+                    RecommendedHeader = match.CanonicalHeader
+                })
+                .ToList(),
             StructureQuality = GetStructureQuality(headerQualityScore)
         };
     }
@@ -158,22 +170,60 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
             .Split('\n');
     }
 
-    private static bool TryMapKnownHeader(string normalizedHeader, out string canonicalHeader)
+    private static bool TryMapKnownHeader(
+        string normalizedHeader,
+        string detectedHeader,
+        out HeaderMatch headerMatch)
     {
         if (CanonicalHeaders.TryGetValue(normalizedHeader, out var knownHeader))
         {
-            canonicalHeader = knownHeader;
+            headerMatch = new HeaderMatch(
+                knownHeader,
+                detectedHeader,
+                HeaderMatchQuality.Standard);
             return true;
         }
 
-        if (HeaderAliases.TryGetValue(normalizedHeader, out var aliasedHeader))
+        if (StrongHeaderAliases.TryGetValue(normalizedHeader, out var strongAliasedHeader))
         {
-            canonicalHeader = aliasedHeader;
+            headerMatch = new HeaderMatch(
+                strongAliasedHeader,
+                detectedHeader,
+                HeaderMatchQuality.StrongAlias);
             return true;
         }
 
-        canonicalHeader = string.Empty;
+        if (WeakHeaderAliases.TryGetValue(normalizedHeader, out var weakAliasedHeader))
+        {
+            headerMatch = new HeaderMatch(
+                weakAliasedHeader,
+                detectedHeader,
+                HeaderMatchQuality.WeakAlias);
+            return true;
+        }
+
+        headerMatch = HeaderMatch.Empty;
         return false;
+    }
+
+    private static void AddBestHeaderMatch(
+        Dictionary<string, HeaderMatch> found,
+        HeaderMatch candidate)
+    {
+        if (!found.TryGetValue(candidate.CanonicalHeader, out var existing) ||
+            candidate.Quality < existing.Quality)
+        {
+            found[candidate.CanonicalHeader] = candidate;
+        }
+    }
+
+    private static int GetHeaderPoints(HeaderMatch match)
+    {
+        var isRequired = RequiredHeaders.Contains(match.CanonicalHeader, StringComparer.OrdinalIgnoreCase);
+
+        return match.Quality == HeaderMatchQuality.WeakAlias
+            ? isRequired ? WeakRequiredHeaderPoints : WeakOptionalHeaderPoints
+            : isRequired ? RequiredHeaderPoints : OptionalHeaderPoints;
     }
 
     private static string CleanHeaderCandidate(string line)
@@ -246,5 +296,23 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         }
 
         return score >= 50 ? "adequate" : "weak";
+    }
+
+    private enum HeaderMatchQuality
+    {
+        Standard = 0,
+        StrongAlias = 1,
+        WeakAlias = 2
+    }
+
+    private sealed record HeaderMatch(
+        string CanonicalHeader,
+        string DetectedHeader,
+        HeaderMatchQuality Quality)
+    {
+        public static HeaderMatch Empty { get; } = new(
+            string.Empty,
+            string.Empty,
+            HeaderMatchQuality.WeakAlias);
     }
 }

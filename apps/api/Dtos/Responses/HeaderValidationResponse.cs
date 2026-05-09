@@ -16,6 +16,21 @@ public sealed class HeaderValidationResponse
     [JsonPropertyName("unclear_headers")]
     public List<string> UnclearHeaders { get; set; } = [];
 
+    [JsonPropertyName("non_standard_headers")]
+    public List<NonStandardHeaderResponse> NonStandardHeaders { get; set; } = [];
+
     [JsonPropertyName("structure_quality")]
     public string StructureQuality { get; set; } = "weak";
+}
+
+public sealed class NonStandardHeaderResponse
+{
+    [JsonPropertyName("header_found")]
+    public string HeaderFound { get; set; } = string.Empty;
+
+    [JsonPropertyName("mapped_to")]
+    public string MappedTo { get; set; } = string.Empty;
+
+    [JsonPropertyName("recommended_header")]
+    public string RecommendedHeader { get; set; } = string.Empty;
 }

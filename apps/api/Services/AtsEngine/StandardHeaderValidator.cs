@@ -24,6 +24,7 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         "Projects",
         "Certifications",
         "Awards",
+        "Achievements",
         "Languages",
         "Volunteer Experience"
     ];
@@ -49,11 +50,59 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         ["Awards & Honours"] = "Awards"
     };
 
-    private static readonly Dictionary<string, string> WeakHeaderAliases = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, HeaderAlias> WeakHeaderAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Profile"] = "Summary",
-        ["Objective"] = "Summary",
-        ["Experiences"] = "Work Experience"
+        ["Profile"] = HeaderAlias.Scored("Summary"),
+        ["Objective"] = HeaderAlias.Scored("Summary"),
+        ["Experiences"] = HeaderAlias.Scored("Work Experience"),
+        ["Where I've Worked"] = HeaderAlias.Scored("Work Experience"),
+        ["Where I’ve Worked"] = HeaderAlias.Scored("Work Experience"),
+        ["My Journey"] = HeaderAlias.Scored("Work Experience"),
+        ["Career Story"] = HeaderAlias.Scored("Work Experience"),
+        ["Professional Journey"] = HeaderAlias.Scored("Work Experience"),
+        ["What I've Done"] = HeaderAlias.Scored("Work Experience"),
+        ["What I’ve Done"] = HeaderAlias.Scored("Work Experience"),
+        ["Places I've Worked"] = HeaderAlias.Scored("Work Experience"),
+        ["Places I’ve Worked"] = HeaderAlias.Scored("Work Experience"),
+        ["Employment History & Impact"] = HeaderAlias.Scored("Work Experience"),
+        ["Things I've Built"] = HeaderAlias.Scored("Projects"),
+        ["Things I’ve Built"] = HeaderAlias.Scored("Projects"),
+        ["What I've Created"] = HeaderAlias.Scored("Projects"),
+        ["What I’ve Created"] = HeaderAlias.Scored("Projects"),
+        ["Case Studies"] = HeaderAlias.Scored("Projects"),
+        ["Portfolio Highlights"] = HeaderAlias.Scored("Projects"),
+        ["Featured Work"] = HeaderAlias.Scored("Projects"),
+        ["Technical Showcase"] = HeaderAlias.Scored("Projects"),
+        ["Toolbox"] = HeaderAlias.Scored("Skills"),
+        ["Tech Stack"] = HeaderAlias.Scored("Skills"),
+        ["My Stack"] = HeaderAlias.Scored("Skills"),
+        ["Core Competencies & Superpowers"] = HeaderAlias.Scored("Skills"),
+        ["Weapons of Choice"] = HeaderAlias.Scored("Skills"),
+        ["Technologies I Love"] = HeaderAlias.Scored("Skills"),
+        ["Capabilities"] = HeaderAlias.Scored("Skills"),
+        ["Expertise"] = HeaderAlias.Scored("Skills"),
+        ["Strengths"] = HeaderAlias.Scored("Skills"),
+        ["About Me"] = HeaderAlias.Scored("Summary"),
+        ["My Mission"] = HeaderAlias.Scored("Summary"),
+        ["Who I Am"] = HeaderAlias.Scored("Summary"),
+        ["Career Objective & Vision"] = HeaderAlias.Scored("Summary"),
+        ["Snapshot"] = HeaderAlias.Scored("Summary"),
+        ["Quick Intro"] = HeaderAlias.Scored("Summary"),
+        ["Academic Journey"] = HeaderAlias.Scored("Education"),
+        ["Learning Path"] = HeaderAlias.Scored("Education"),
+        ["Credentials"] = HeaderAlias.Scored("Certifications"),
+        ["Knowledge Base"] = HeaderAlias.Scored("Skills"),
+        ["Side Quests"] = HeaderAlias.Scored("Projects"),
+        ["Passion Projects & Experiments"] = HeaderAlias.Scored("Projects"),
+        ["Labs"] = HeaderAlias.Scored("Projects"),
+        ["Wins"] = HeaderAlias.Scored("Achievements"),
+        ["Proud Moments"] = HeaderAlias.Scored("Achievements"),
+        ["Highlights"] = HeaderAlias.Scored("Achievements"),
+        ["Impact"] = HeaderAlias.Scored("Achievements"),
+        ["Recognition"] = HeaderAlias.Scored("Awards"),
+        ["Certifications & Badges"] = HeaderAlias.Scored("Certifications"),
+        ["Connect With Me"] = HeaderAlias.Unscored("Contact Information"),
+        ["Reach Me At"] = HeaderAlias.Unscored("Contact Information")
     };
 
     private static readonly HashSet<string> CanonicalHeaders =
@@ -105,6 +154,7 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
     public HeaderValidationResponse Validate(string resumeText)
     {
         var found = new Dictionary<string, HeaderMatch>(StringComparer.OrdinalIgnoreCase);
+        var nonScoredHeaders = new List<HeaderMatch>();
         var unclear = new List<string>();
         var seenUnclear = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -121,7 +171,15 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
 
             if (TryMapKnownHeader(normalized, line, out var headerMatch))
             {
-                AddBestHeaderMatch(found, headerMatch);
+                if (headerMatch.IsScored)
+                {
+                    AddBestHeaderMatch(found, headerMatch);
+                }
+                else
+                {
+                    nonScoredHeaders.Add(headerMatch);
+                }
+
                 continue;
             }
 
@@ -145,13 +203,13 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
                 .Where(header => !found.ContainsKey(header))
                 .ToList(),
             UnclearHeaders = unclear,
-            NonStandardHeaders = found.Values
+            NonStandardHeaders = found.Values.Concat(nonScoredHeaders)
                 .Where(match => match.Quality == HeaderMatchQuality.WeakAlias)
                 .Select(match => new NonStandardHeaderResponse
                 {
                     HeaderFound = match.DetectedHeader,
-                    MappedTo = match.CanonicalHeader,
-                    RecommendedHeader = match.CanonicalHeader
+                    MappedTo = match.RecommendedHeader,
+                    RecommendedHeader = match.RecommendedHeader
                 })
                 .ToList(),
             StructureQuality = GetStructureQuality(headerQualityScore)
@@ -179,6 +237,7 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         {
             headerMatch = new HeaderMatch(
                 knownHeader,
+                knownHeader,
                 detectedHeader,
                 HeaderMatchQuality.Standard);
             return true;
@@ -188,17 +247,20 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
         {
             headerMatch = new HeaderMatch(
                 strongAliasedHeader,
+                strongAliasedHeader,
                 detectedHeader,
                 HeaderMatchQuality.StrongAlias);
             return true;
         }
 
-        if (WeakHeaderAliases.TryGetValue(normalizedHeader, out var weakAliasedHeader))
+        if (WeakHeaderAliases.TryGetValue(normalizedHeader, out var weakAlias))
         {
             headerMatch = new HeaderMatch(
-                weakAliasedHeader,
+                weakAlias.CanonicalHeader,
+                weakAlias.RecommendedHeader,
                 detectedHeader,
-                HeaderMatchQuality.WeakAlias);
+                HeaderMatchQuality.WeakAlias,
+                weakAlias.IsScored);
             return true;
         }
 
@@ -307,12 +369,32 @@ public sealed class StandardHeaderValidator : IStandardHeaderValidator
 
     private sealed record HeaderMatch(
         string CanonicalHeader,
+        string RecommendedHeader,
         string DetectedHeader,
-        HeaderMatchQuality Quality)
+        HeaderMatchQuality Quality,
+        bool IsScored = true)
     {
         public static HeaderMatch Empty { get; } = new(
             string.Empty,
             string.Empty,
-            HeaderMatchQuality.WeakAlias);
+            string.Empty,
+            HeaderMatchQuality.WeakAlias,
+            false);
+    }
+
+    private sealed record HeaderAlias(
+        string CanonicalHeader,
+        string RecommendedHeader,
+        bool IsScored)
+    {
+        public static HeaderAlias Scored(string canonicalHeader)
+        {
+            return new HeaderAlias(canonicalHeader, canonicalHeader, true);
+        }
+
+        public static HeaderAlias Unscored(string recommendedHeader)
+        {
+            return new HeaderAlias(recommendedHeader, recommendedHeader, false);
+        }
     }
 }

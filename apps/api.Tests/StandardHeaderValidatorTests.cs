@@ -66,6 +66,64 @@ Education
     }
 
     [Fact]
+    public void Validate_CreativeScoredHeaders_MapToCanonicalHeadersWithReducedCredit()
+    {
+        var result = CreateValidator().Validate("""
+Where I've Worked
+Things I've Built
+Toolbox
+About Me
+Academic Journey
+Wins
+Recognition
+Certifications & Badges
+""");
+
+        Assert.Equal(76, result.HeaderQualityScore);
+        Assert.Contains("Work Experience", result.HeadersFound);
+        Assert.Contains("Projects", result.HeadersFound);
+        Assert.Contains("Skills", result.HeadersFound);
+        Assert.Contains("Summary", result.HeadersFound);
+        Assert.Contains("Education", result.HeadersFound);
+        Assert.Contains("Achievements", result.HeadersFound);
+        Assert.Contains("Awards", result.HeadersFound);
+        Assert.Contains("Certifications", result.HeadersFound);
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Where I've Worked" &&
+            header.RecommendedHeader == "Work Experience");
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Things I've Built" &&
+            header.RecommendedHeader == "Projects");
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Wins" &&
+            header.RecommendedHeader == "Achievements");
+    }
+
+    [Fact]
+    public void Validate_CreativeContactHeaders_AreReportedButDoNotAffectScore()
+    {
+        var result = CreateValidator().Validate("""
+Summary
+Skills
+Work Experience
+Education
+Connect With Me
+Reach Me At
+""");
+
+        Assert.Equal(80, result.HeaderQualityScore);
+        Assert.DoesNotContain("Contact Information", result.HeadersFound);
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Connect With Me" &&
+            header.MappedTo == "Contact Information" &&
+            header.RecommendedHeader == "Contact Information");
+        Assert.Contains(result.NonStandardHeaders, header =>
+            header.HeaderFound == "Reach Me At" &&
+            header.MappedTo == "Contact Information" &&
+            header.RecommendedHeader == "Contact Information");
+    }
+
+    [Fact]
     public void Validate_StandardHeaderOverridesWeakAliasRecommendation()
     {
         var result = CreateValidator().Validate("""
@@ -184,7 +242,7 @@ Personal Toolkit
         Assert.Equal(0, result.HeaderQualityScore);
         Assert.Equal("weak", result.StructureQuality);
         Assert.Empty(result.HeadersFound);
-        Assert.Equal(9, result.HeadersMissing.Count);
+        Assert.Equal(10, result.HeadersMissing.Count);
     }
 
     private static StandardHeaderValidator CreateValidator()

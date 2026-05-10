@@ -48,6 +48,10 @@ builder.Services.Configure<OpenAiOptions>(
 builder.Services.AddScoped<IResumeReviewService, ResumeReviewService>();
 builder.Services.AddScoped<IResumeTextExtractor, PdfPigResumeTextExtractor>();
 builder.Services.AddScoped<IStandardHeaderValidator, StandardHeaderValidator>();
+builder.Services.AddScoped<KeywordExtractionEnricher>();
+builder.Services.AddScoped<ContextualKeywordScoreMerger>();
+builder.Services.AddScoped<IKeywordScoringService, KeywordScoringService>();
+builder.Services.AddScoped<IFinalAssessmentService, FinalAssessmentService>();
 
 
 builder.Services.AddScoped<IAiResumeAnalysisService, ResumeAnalysisService>();
@@ -70,6 +74,16 @@ builder.Services.AddHttpClient<IAiProviderClient, OpenAiProviderClient>(client =
 builder.Services.AddHttpClient<IJobListingsService, OpenAiJobListingsService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(openAiOptions.JobListingsTimeoutSeconds);
+});
+
+builder.Services.AddHttpClient<IKeywordExtractionService, OpenAiKeywordExtractionService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(openAiOptions.RequestTimeoutSeconds);
+});
+
+builder.Services.AddHttpClient<IContextualKeywordScoringService, OpenAiContextualKeywordScoringService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(openAiOptions.RequestTimeoutSeconds);
 });
 
 var allowedOrigins =

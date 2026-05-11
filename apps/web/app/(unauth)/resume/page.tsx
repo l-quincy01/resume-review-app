@@ -32,6 +32,9 @@ import { Typewriter } from "@/components/ui/typewriter";
 import { jobListingWords, loadingWords } from "@/constants/constants";
 import { apiUrl } from "@/lib/api";
 import { clientLogger } from "@/lib/client-logger";
+import { runAtsEngine } from "@/service/ats-engine.service";
+import { AtsEnginePipelineResult } from "@/types/ats-engine.type";
+import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
 
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +47,9 @@ export default function Page() {
   const [jobListings, setJobListings] = useState<JobListingsResponse | null>(
     null,
   );
+  const [atsEngineResult, setAtsEngineResult] =
+    useState<AtsEnginePipelineResult | null>(null);
+  const [atsEngineError, setAtsEngineError] = useState<string | null>(null);
 
   const aiModel = useAIModelStore((state) => state.aiModel);
 
@@ -102,13 +108,56 @@ export default function Page() {
 
       setReportData(null);
       setJobListings(null);
+      setAtsEngineResult(null);
+      setAtsEngineError(null);
       setIsLoadingJobListings(false);
+
+      const atsEnginePromise = runAtsEngine({
+        aiModel,
+        resumeFile,
+        jobDescription,
+        onStageChange: (stage) => {
+          clientLogger.info("ats_engine_stage_started", {
+            stage,
+            aiModel,
+            hasJobDescription: Boolean(jobDescription.trim()),
+          });
+        },
+      })
+        .then((result) => ({ result, error: null }))
+        .catch((error) => ({ result: null, error }));
 
       const result = await submitResumeReview({
         aiModel,
         resumeFile,
         jobDescription,
       });
+
+      const atsEngineOutcome = await atsEnginePromise;
+
+      if (atsEngineOutcome.result) {
+        setAtsEngineResult(atsEngineOutcome.result);
+        clientLogger.info("ats_engine_completed", {
+          aiModel,
+          hasJobDescription: Boolean(jobDescription.trim()),
+          keywordCount:
+            atsEngineOutcome.result.keywordExtraction?.keywords.length ?? 0,
+          scoredKeywordCount:
+            atsEngineOutcome.result.keywordScoring?.keyword_scores.length ?? 0,
+        });
+      }
+
+      if (atsEngineOutcome.error) {
+        setAtsEngineError(
+          atsEngineOutcome.error instanceof Error
+            ? atsEngineOutcome.error.message
+            : "ATS Engine assessment failed.",
+        );
+        clientLogger.error("ats_engine_failed", atsEngineOutcome.error, {
+          aiModel,
+          hasJobDescription: Boolean(jobDescription.trim()),
+        });
+      }
 
       setReportData(result);
       clientLogger.info("resume_review_completed", {
@@ -301,6 +350,14 @@ export default function Page() {
                       jobListings={jobListings.jobListings}
                     />
                   )}
+                {atsEngineError && (
+                  <div className="w-full p-2">
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                      {atsEngineError}
+                    </div>
+                  </div>
+                )}
+                {atsEngineResult && <AtsEngineResults result={atsEngineResult} />}
               </div>
             </div>
           </div>

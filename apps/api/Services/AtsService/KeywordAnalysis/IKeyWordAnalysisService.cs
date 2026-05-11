@@ -2,11 +2,12 @@ using ResumeReview.Api.Dtos.Responses;
 
 namespace ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
 
-public interface IContextualKeywordScoringService
+public interface IKeyWordAnalysisService
 {
-    Task<ContextualKeywordScoringResponse> ScoreKeywordsAsync(
+    Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
         string aiModel,
         KeywordExtractionResponse keywords,
         string resumeText,
         CancellationToken cancellationToken = default);
 }
+

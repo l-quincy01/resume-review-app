@@ -10,22 +10,22 @@ using ResumeReview.Api.Services.Providers.OpenAI;
 
 namespace ResumeReview.Api.Services.AtsService.Providers.OpenAI;
 
-public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordScoringService
+public sealed class OpenAIKeyWordAnalysisService : IKeyWordAnalysisService
 {
     private const string SchemaName = "ats_contextual_keyword_scoring";
 
     private readonly HttpClient _httpClient;
     private readonly OpenAiOptions _options;
     private readonly OpenAiRetryPolicy _retryPolicy;
-    private readonly ContextualKeywordScoreMerger _merger;
-    private readonly ILogger<OpenAiContextualKeywordScoringService> _logger;
+    private readonly KeywordAnalysisMerger _merger;
+    private readonly ILogger<OpenAIKeyWordAnalysisService> _logger;
 
-    public OpenAiContextualKeywordScoringService(
+    public OpenAIKeyWordAnalysisService(
         HttpClient httpClient,
         IOptions<OpenAiOptions> options,
         OpenAiRetryPolicy retryPolicy,
-        ContextualKeywordScoreMerger merger,
-        ILogger<OpenAiContextualKeywordScoringService> logger)
+        KeywordAnalysisMerger merger,
+        ILogger<OpenAIKeyWordAnalysisService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
@@ -38,7 +38,7 @@ public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordSc
             new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
-    public async Task<ContextualKeywordScoringResponse> ScoreKeywordsAsync(
+    public async Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
         string aiModel,
         KeywordExtractionResponse keywords,
         string resumeText,
@@ -103,7 +103,7 @@ public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordSc
             }
 
             var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
-            var llmScores = JsonSerializer.Deserialize<ContextualKeywordScoringResponse>(
+            var llmScores = JsonSerializer.Deserialize<KeywordAnalysisResponse>(
                 modelJson,
                 new JsonSerializerOptions
                 {

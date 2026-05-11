@@ -8,17 +8,17 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class ContextualKeywordScoreMergerTests
+public class KeywordAnalysisMergerTests
 {
     [Fact]
     public void Merge_InjectsStageBMetadataIntoLlmResults()
     {
         var stageB = CreateStageB();
-        var llm = new ContextualKeywordScoringResponse
+        var llm = new KeywordAnalysisResponse
         {
             KeywordScores =
             [
-                new ContextualKeywordScoreResponse
+                new KeywordAnalysisObject
                 {
                     Keyword = "React",
                     Present = true,
@@ -60,7 +60,7 @@ public class ContextualKeywordScoreMergerTests
     [Fact]
     public void Merge_FillsMissingLlmKeywordsAsNotPresent()
     {
-        var result = CreateMerger().Merge(CreateStageB(), new ContextualKeywordScoringResponse());
+        var result = CreateMerger().Merge(CreateStageB(), new KeywordAnalysisResponse());
         var score = Assert.Single(result.KeywordScores);
 
         Assert.Equal("React", score.Keyword);
@@ -79,11 +79,11 @@ public class ContextualKeywordScoreMergerTests
     public void Merge_CapsEvidenceAtThreeSnippets()
     {
         var stageB = CreateStageB();
-        var llm = new ContextualKeywordScoringResponse
+        var llm = new KeywordAnalysisResponse
         {
             KeywordScores =
             [
-                new ContextualKeywordScoreResponse
+                new KeywordAnalysisObject
                 {
                     Keyword = "React",
                     Present = true,
@@ -107,9 +107,9 @@ public class ContextualKeywordScoreMergerTests
         Assert.Equal("three", score.Evidence[2].Text);
     }
 
-    private static ContextualKeywordScoreMerger CreateMerger()
+    private static KeywordAnalysisMerger CreateMerger()
     {
-        return new ContextualKeywordScoreMerger();
+        return new KeywordAnalysisMerger();
     }
 
     private static KeywordExtractionResponse CreateStageB()

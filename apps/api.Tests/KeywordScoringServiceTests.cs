@@ -99,21 +99,21 @@ public class KeywordScoringServiceTests
         return new KeywordScoringService();
     }
 
-    private static ContextualKeywordScoringResponse CreateResponse(params ContextualKeywordScoreResponse[] keywords)
+    private static KeywordAnalysisResponse CreateResponse(params KeywordAnalysisObject[] keywords)
     {
-        return new ContextualKeywordScoringResponse
+        return new KeywordAnalysisResponse
         {
             KeywordScores = keywords.ToList()
         };
     }
 
-    private static ContextualKeywordScoreResponse CreateKeyword(
+    private static KeywordAnalysisObject CreateKeyword(
         bool present = true,
         int tier = 0,
         string requirement = "must_have",
         KeywordContextTypeResponse? contextType = null)
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisObject
         {
             Keyword = "React",
             Present = present,

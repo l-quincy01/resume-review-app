@@ -72,7 +72,7 @@ public class AtsValidatorControllerTests
         return new AtsValidatorController(new FinalAssessmentService());
     }
 
-    private static FinalAssessmentRequest CreateRequest(int headerScore, params ScoredKeywordResponse[] keywords)
+    private static FinalAssessmentRequest CreateRequest(int headerScore, params KeywordScoreObject[] keywords)
     {
         return new FinalAssessmentRequest
         {
@@ -82,9 +82,9 @@ public class AtsValidatorControllerTests
         };
     }
 
-    private static ScoredKeywordResponse Keyword()
+    private static KeywordScoreObject Keyword()
     {
-        return new ScoredKeywordResponse
+        return new KeywordScoreObject
         {
             Keyword = "React",
             Present = true,

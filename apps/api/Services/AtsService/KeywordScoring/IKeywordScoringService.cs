@@ -4,5 +4,5 @@ namespace ResumeReview.Api.Services.AtsService.KeywordScoring;
 
 public interface IKeywordScoringService
 {
-    KeywordScoringResponse Score(ContextualKeywordScoringResponse contextualKeywords);
+    KeywordScoringResponse Score(KeywordAnalysisResponse contextualKeywords);
 }

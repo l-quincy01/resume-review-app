@@ -6,5 +6,5 @@ namespace ResumeReview.Api.Dtos.Requests;
 public sealed class KeywordScoringRequest
 {
     [JsonPropertyName("keyword_scores")]
-    public List<ContextualKeywordScoreResponse> KeywordScores { get; set; } = [];
+    public List<KeywordAnalysisObject> KeywordScores { get; set; } = [];
 }

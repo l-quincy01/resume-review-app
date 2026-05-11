@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ResumeReview.Api.Dtos.Requests;
 
-public sealed class ContextualKeywordScoringRequest
+public sealed class KeywordAnalysisRequest
 {
     [FromForm(Name = "resume")]
     public IFormFile Resume { get; set; } = default!;
@@ -13,3 +13,4 @@ public sealed class ContextualKeywordScoringRequest
     [FromForm(Name = "ai_model")]
     public string AiModel { get; set; } = string.Empty;
 }
+

@@ -13,11 +13,11 @@ namespace ResumeReview.Api.Controllers;
 
 [ApiController]
 [Route("api/ats-engine")]
-public sealed class KeywordValidatorController : ControllerBase
+public sealed class KeywordAnalysisObject : ControllerBase
 {
     private readonly IKeywordScoringService _keywordScoringService;
 
-    public KeywordValidatorController(IKeywordScoringService keywordScoringService)
+    public KeywordAnalysisObject(IKeywordScoringService keywordScoringService)
     {
         _keywordScoringService = keywordScoringService;
     }
@@ -50,7 +50,7 @@ public sealed class KeywordValidatorController : ControllerBase
             }
         }
 
-        return Ok(_keywordScoringService.Score(new ContextualKeywordScoringResponse
+        return Ok(_keywordScoringService.Score(new KeywordAnalysisResponse
         {
             KeywordScores = request.KeywordScores
         }));

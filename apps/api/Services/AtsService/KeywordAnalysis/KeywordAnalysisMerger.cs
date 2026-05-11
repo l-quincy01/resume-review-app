@@ -2,19 +2,19 @@ using ResumeReview.Api.Dtos.Responses;
 
 namespace ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
 
-public sealed class ContextualKeywordScoreMerger
+public sealed class KeywordAnalysisMerger
 {
     private const int MaxEvidenceSnippets = 3;
 
-    public ContextualKeywordScoringResponse Merge(
+    public KeywordAnalysisResponse Merge(
         KeywordExtractionResponse stageBKeywords,
-        ContextualKeywordScoringResponse llmResponse)
+        KeywordAnalysisResponse llmResponse)
     {
         var llmScores = llmResponse.KeywordScores
             .GroupBy(score => score.Keyword, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-        return new ContextualKeywordScoringResponse
+        return new KeywordAnalysisResponse
         {
             KeywordScores = stageBKeywords.Keywords
                 .Select(keyword =>
@@ -29,11 +29,11 @@ public sealed class ContextualKeywordScoreMerger
         };
     }
 
-    private static ContextualKeywordScoreResponse InjectMetadata(
+    private static KeywordAnalysisObject InjectMetadata(
         KeywordExtractionItemResponse keyword,
-        ContextualKeywordScoreResponse score)
+        KeywordAnalysisObject score)
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisObject
         {
             Keyword = keyword.Keyword,
             Present = score.Present,
@@ -49,9 +49,9 @@ public sealed class ContextualKeywordScoreMerger
         };
     }
 
-    private static ContextualKeywordScoreResponse CreateMissingScore(string keyword)
+    private static KeywordAnalysisObject CreateMissingScore(string keyword)
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisObject
         {
             Keyword = keyword,
             Present = false,

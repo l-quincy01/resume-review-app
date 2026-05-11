@@ -142,7 +142,7 @@ public class FinalAssessmentServiceTests
         return new FinalAssessmentService();
     }
 
-    private static FinalAssessmentRequest CreateRequest(int headerScore, params ScoredKeywordResponse[] keywords)
+    private static FinalAssessmentRequest CreateRequest(int headerScore, params KeywordScoreObject[] keywords)
     {
         return new FinalAssessmentRequest
         {
@@ -152,7 +152,7 @@ public class FinalAssessmentServiceTests
         };
     }
 
-    private static ScoredKeywordResponse Keyword(
+    private static KeywordScoreObject Keyword(
         string keyword,
         int tier,
         bool present,
@@ -161,7 +161,7 @@ public class FinalAssessmentServiceTests
         KeywordContextTypeResponse? contextType = null,
         List<KeywordEvidenceResponse>? evidence = null)
     {
-        return new ScoredKeywordResponse
+        return new KeywordScoreObject
         {
             Keyword = keyword,
             Present = present,

@@ -11,7 +11,7 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class KeywordValidatorControllerTests
+public class KeywordAnalysisTests
 {
     [Fact]
     public void ScoreKeywords_RejectsMissingBody()
@@ -76,12 +76,12 @@ public class KeywordValidatorControllerTests
         Assert.Equal(29, score.KeywordScore);
     }
 
-    private static KeywordValidatorController CreateController()
+    private static KeywordAnalysisObject CreateController()
     {
-        return new KeywordValidatorController(new KeywordScoringService());
+        return new KeywordAnalysisObject(new KeywordScoringService());
     }
 
-    private static KeywordScoringRequest CreateRequest(params ContextualKeywordScoreResponse[] keywords)
+    private static KeywordScoringRequest CreateRequest(params KeywordAnalysisObject[] keywords)
     {
         return new KeywordScoringRequest
         {
@@ -89,11 +89,11 @@ public class KeywordValidatorControllerTests
         };
     }
 
-    private static ContextualKeywordScoreResponse CreateKeyword(
+    private static KeywordAnalysisObject CreateKeyword(
         int tier = 0,
         string requirement = "must_have")
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisObject
         {
             Keyword = "React",
             Present = true,

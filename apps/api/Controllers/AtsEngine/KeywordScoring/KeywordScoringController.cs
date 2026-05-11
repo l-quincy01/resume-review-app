@@ -16,18 +16,18 @@ namespace ResumeReview.Api.Controllers;
 [ApiController]
 [Route("api/ats-engine")]
 
-public sealed class ContextualKeywordScoringController : ControllerBase
+public sealed class KeywordScoringController : ControllerBase
 {
     private readonly IResumeTextExtractor _resumeTextExtractor;
-    private readonly IContextualKeywordScoringService _contextualKeywordScoringService;
+    private readonly IKeyWordAnalysisService _contextualKeywordScoringService;
     private readonly OpenAiOptions _openAiOptions;
-    private readonly ILogger<ContextualKeywordScoringController> _logger;
+    private readonly ILogger<KeywordScoringController> _logger;
 
-    public ContextualKeywordScoringController(
+    public KeywordScoringController(
         IResumeTextExtractor resumeTextExtractor,
-        IContextualKeywordScoringService contextualKeywordScoringService,
+        IKeyWordAnalysisService contextualKeywordScoringService,
         IOptions<OpenAiOptions> openAiOptions,
-        ILogger<ContextualKeywordScoringController> logger)
+        ILogger<KeywordScoringController> logger)
     {
         _resumeTextExtractor = resumeTextExtractor;
         _contextualKeywordScoringService = contextualKeywordScoringService;
@@ -37,11 +37,11 @@ public sealed class ContextualKeywordScoringController : ControllerBase
 
     [HttpPost("contextual-keyword-scoring")]
     [Consumes("multipart/form-data")]
-    [ProducesResponseType(typeof(ContextualKeywordScoringResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(KeywordAnalysisResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> ScoreKeywords(
-        [FromForm] ContextualKeywordScoringRequest request,
+        [FromForm] KeywordAnalysisRequest request,
         CancellationToken cancellationToken)
     {
         if (request.Resume == null || request.Resume.Length == 0)

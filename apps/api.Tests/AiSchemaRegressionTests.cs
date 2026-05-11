@@ -51,6 +51,56 @@ public class AiSchemaRegressionTests
             tasks.Select(task => task.SchemaName));
     }
 
+    [Fact]
+    public void AtsKeywordExtractionSchema_DeclaresRequiredKeywordFields()
+    {
+        var json = JsonSerializer.Serialize(AtsKeywordExtractionSchema.Schema);
+        using var document = JsonDocument.Parse(json);
+        var keywordItem = document.RootElement
+            .GetProperty("properties")
+            .GetProperty("keywords")
+            .GetProperty("items");
+
+        Assert.False(keywordItem.GetProperty("additionalProperties").GetBoolean());
+
+        var required = keywordItem
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+
+        foreach (var field in new[] { "keyword", "tier", "requirement", "category", "context", "variations" })
+        {
+            Assert.Contains(field, required);
+            Assert.True(keywordItem.GetProperty("properties").TryGetProperty(field, out _));
+        }
+    }
+
+    [Fact]
+    public void AtsContextualKeywordScoringSchema_DeclaresRequiredKeywordScoreFields()
+    {
+        var json = JsonSerializer.Serialize(AtsContextualKeywordScoringSchema.Schema);
+        using var document = JsonDocument.Parse(json);
+        var keywordItem = document.RootElement
+            .GetProperty("properties")
+            .GetProperty("keyword_scores")
+            .GetProperty("items");
+
+        Assert.False(keywordItem.GetProperty("additionalProperties").GetBoolean());
+
+        var required = keywordItem
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+
+        foreach (var field in new[] { "keyword", "present", "matched_terms", "context_type", "evidence" })
+        {
+            Assert.Contains(field, required);
+            Assert.True(keywordItem.GetProperty("properties").TryGetProperty(field, out _));
+        }
+    }
+
     public static IEnumerable<object[]> Schemas()
     {
         yield return ["ats_content", AtsContentSchema.Schema, new[] { "heading", "resumeName", "content" }];
@@ -58,6 +108,8 @@ public class AiSchemaRegressionTests
         yield return ["job_recommendation", JobRecommendationSchema.Schema, new[] { "yearsExperience", "jobTitles", "responsibilities" }];
         yield return ["job_search_profile", JobSearchProfileSchema.Schema, new[] { "titles", "keywords", "seniority", "locations", "exclude" }];
         yield return ["spelling_and_grammar", SpellingAndGrammarSchema.Schema, new[] { "score", "grammarSuggestions", "spellingSuggestions" }];
+        yield return ["ats_keyword_extraction", AtsKeywordExtractionSchema.Schema, new[] { "job_title", "keywords" }];
+        yield return ["ats_contextual_keyword_scoring", AtsContextualKeywordScoringSchema.Schema, new[] { "keyword_scores" }];
     }
 
     private static IAiAnalysisTask<object> Cast<T>(IAiAnalysisTask<T> task)

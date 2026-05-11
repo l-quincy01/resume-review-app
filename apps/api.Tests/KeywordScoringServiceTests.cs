@@ -1,0 +1,139 @@
+using ResumeReview.Api.Dtos.Responses;
+using ResumeReview.Api.Services.AtsEngine;
+
+namespace ResumeReview.Api.Tests;
+
+public class KeywordScoringServiceTests
+{
+    [Fact]
+    public void Score_FullTierZeroMustHaveContext_ClampsToOneHundred()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            tier: 0,
+            requirement: "must_have",
+            contextType: AllFlags())));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(99, score.ContextPoints);
+        Assert.Equal(1.15m, score.RequirementMultiplier);
+        Assert.Equal(100, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_AppliesTierSpecificPointTables()
+    {
+        var result = CreateService().Score(CreateResponse(
+            CreateKeyword(tier: 1, requirement: "", contextType: new KeywordContextTypeResponse { HasAchievement = true }),
+            CreateKeyword(tier: 2, requirement: "", contextType: new KeywordContextTypeResponse { HasMetric = true }),
+            CreateKeyword(tier: 3, requirement: "", contextType: new KeywordContextTypeResponse { InProjectSection = true })));
+
+        Assert.Equal(20, result.KeywordScores[0].ContextPoints);
+        Assert.Equal(20, result.KeywordScores[0].KeywordScore);
+        Assert.Equal(12, result.KeywordScores[1].ContextPoints);
+        Assert.Equal(12, result.KeywordScores[1].KeywordScore);
+        Assert.Equal(5, result.KeywordScores[2].ContextPoints);
+        Assert.Equal(5, result.KeywordScores[2].KeywordScore);
+    }
+
+    [Fact]
+    public void Score_NiceToHaveUsesOnePointZeroFiveMultiplier()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            tier: 1,
+            requirement: "nice_to_have",
+            contextType: new KeywordContextTypeResponse { HasMetric = true })));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(1.05m, score.RequirementMultiplier);
+        Assert.Equal(16, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_EmptyRequirementUsesOnePointZeroMultiplier()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            tier: 1,
+            requirement: "",
+            contextType: new KeywordContextTypeResponse { HasMetric = true })));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(1.0m, score.RequirementMultiplier);
+        Assert.Equal(15, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_MissingKeywordScoresZero()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            present: false,
+            tier: 0,
+            requirement: "must_have",
+            contextType: AllFlags())));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(0, score.ContextPoints);
+        Assert.Equal(1.15m, score.RequirementMultiplier);
+        Assert.Equal(0, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_PresentKeywordWithNoContextFlagsUsesStuffingPenalty()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            tier: 0,
+            requirement: "must_have",
+            contextType: new KeywordContextTypeResponse())));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(-12, score.ContextPoints);
+        Assert.Equal(0, score.KeywordScore);
+    }
+
+    private static KeywordScoringService CreateService()
+    {
+        return new KeywordScoringService();
+    }
+
+    private static ContextualKeywordScoringResponse CreateResponse(params ContextualKeywordScoreResponse[] keywords)
+    {
+        return new ContextualKeywordScoringResponse
+        {
+            KeywordScores = keywords.ToList()
+        };
+    }
+
+    private static ContextualKeywordScoreResponse CreateKeyword(
+        bool present = true,
+        int tier = 0,
+        string requirement = "must_have",
+        KeywordContextTypeResponse? contextType = null)
+    {
+        return new ContextualKeywordScoreResponse
+        {
+            Keyword = "React",
+            Present = present,
+            Tier = tier,
+            Requirement = requirement,
+            KeywordType = "single_word",
+            Frequency = 1,
+            Context = "Used to build UI.",
+            Variations = [],
+            MatchedTerms = present ? ["React"] : [],
+            ContextType = contextType ?? new KeywordContextTypeResponse(),
+            Evidence = []
+        };
+    }
+
+    private static KeywordContextTypeResponse AllFlags()
+    {
+        return new KeywordContextTypeResponse
+        {
+            HasAchievement = true,
+            HasMetric = true,
+            HasActionVerb = true,
+            InExperienceSection = true,
+            InProjectSection = true,
+            InSummarySection = true
+        };
+    }
+}

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ResumeReview.Api.Services.AtsService.Schemas;
 using ResumeReview.Api.Services.Schemas;
 using ResumeReview.Api.Services.Tasks;
 

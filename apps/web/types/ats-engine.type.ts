@@ -110,6 +110,8 @@ export interface AtsTierBreakdownItem {
 
 export interface AtsCriticalGap {
   keyword: string;
+  keyword_type: string;
+  context: string;
   tier: number;
   requirement: string;
   reason: string;
@@ -117,6 +119,8 @@ export interface AtsCriticalGap {
 
 export interface AtsStrength {
   keyword: string;
+  keyword_type: string;
+  context: string;
   score: number;
   reason: string;
   evidence: AtsEvidence[];
@@ -124,6 +128,8 @@ export interface AtsStrength {
 
 export interface AtsRecommendation {
   keyword: string;
+  keyword_type: string;
+  context: string;
   priority: string;
   issue: string;
   suggestion: string;

@@ -22,6 +22,7 @@ public class KeywordAnalysisMergerTests
                 {
                     Keyword = "React",
                     Present = true,
+                    Context = "LLM context should not be used.",
                     MatchedTerms = ["React"],
                     ContextType = new KeywordContextTypeResponse
                     {

@@ -158,6 +158,9 @@ Evidence rules:
 - If the keyword is not present, evidence must be an empty array.
 - Do not invent evidence. Use only resume text.
 
+Output rules:
+- Do not return a context field. The original job-description context is already supplied in JD Keywords and will be copied into the final response by the API.
+
 Return ONLY valid JSON with NO additional text or markdown.
 
 JD Keywords:

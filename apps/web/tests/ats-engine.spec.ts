@@ -25,7 +25,9 @@ test.describe("ATS Engine section", () => {
     await expect(page.getByText("82/100")).toBeVisible();
     await expect(page.getByText("Critical Gaps")).toBeVisible();
     await expect(page.getByText("Missing: TypeScript")).toBeVisible();
+    await expect(page.getByText("Used for typed frontend development.").first()).toBeVisible();
     await expect(page.getByText("Strengths")).toBeVisible();
+    await expect(page.getByText("Used to build frontend interfaces.")).toBeVisible();
     await expect(page.getByText("Well contextualised with an action verb")).toBeVisible();
     await expect(page.getByText("Add TypeScript naturally")).toBeVisible();
 

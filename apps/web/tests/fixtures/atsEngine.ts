@@ -147,6 +147,8 @@ export const atsFinalAssessmentResponse = {
   critical_gaps: [
     {
       keyword: "TypeScript",
+      keyword_type: "single_word",
+      context: "Used for typed frontend development.",
       tier: 1,
       requirement: "must_have",
       reason:
@@ -156,6 +158,8 @@ export const atsFinalAssessmentResponse = {
   strengths: [
     {
       keyword: "React",
+      keyword_type: "single_word",
+      context: "Used to build frontend interfaces.",
       score: 83,
       reason:
         "Well contextualised with an action verb, achievement, and measurable outcome.",
@@ -171,6 +175,8 @@ export const atsFinalAssessmentResponse = {
   recommendations: [
     {
       keyword: "TypeScript",
+      keyword_type: "single_word",
+      context: "Used for typed frontend development.",
       priority: "High",
       issue: "Missing critical must-have keyword.",
       suggestion:

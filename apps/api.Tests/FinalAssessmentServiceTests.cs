@@ -78,6 +78,8 @@ public class FinalAssessmentServiceTests
 
         Assert.Equal(["TypeScript", "REST APIs"], result.CriticalGaps.Select(gap => gap.Keyword).ToList());
         Assert.All(result.CriticalGaps, gap => Assert.Equal("must_have", gap.Requirement));
+        Assert.All(result.CriticalGaps, gap => Assert.False(string.IsNullOrWhiteSpace(gap.KeywordType)));
+        Assert.All(result.CriticalGaps, gap => Assert.Equal("Used in the role.", gap.Context));
     }
 
     [Fact]
@@ -103,6 +105,8 @@ public class FinalAssessmentServiceTests
 
         var strength = Assert.Single(result.Strengths);
         Assert.Equal("React", strength.Keyword);
+        Assert.Equal("single_word", strength.KeywordType);
+        Assert.Equal("Used in the role.", strength.Context);
         Assert.Equal(100, strength.Score);
         Assert.Contains("measurable outcome", strength.Reason);
         Assert.Single(strength.Evidence);
@@ -121,6 +125,8 @@ public class FinalAssessmentServiceTests
 
         Assert.Equal(["High", "High", "Medium"], result.Recommendations.Select(recommendation => recommendation.Priority).ToList());
         Assert.Equal(["TypeScript", "REST APIs", "Testing"], result.Recommendations.Select(recommendation => recommendation.Keyword).ToList());
+        Assert.All(result.Recommendations, recommendation => Assert.False(string.IsNullOrWhiteSpace(recommendation.KeywordType)));
+        Assert.All(result.Recommendations, recommendation => Assert.Equal("Used in the role.", recommendation.Context));
     }
 
     [Fact]

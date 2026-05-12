@@ -107,6 +107,8 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .Select(keyword => new FinalAssessmentCriticalGapResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Tier = keyword.Tier,
                 Requirement = keyword.Requirement,
                 Reason = "Missing entirely from the resume despite being a critical must-have requirement."
@@ -121,6 +123,8 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .Select(keyword => new FinalAssessmentStrengthResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Score = keyword.KeywordScore,
                 Reason = BuildStrengthReason(keyword),
                 Evidence = keyword.Evidence.Take(3).ToList()
@@ -135,6 +139,8 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .Select(keyword => new FinalAssessmentRecommendationResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Priority = keyword.Tier is 0 or 1 ? "High" : "Medium",
                 Issue = keyword.Tier is 0 or 1
                     ? "Missing critical must-have keyword."

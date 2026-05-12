@@ -1,4 +1,4 @@
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;

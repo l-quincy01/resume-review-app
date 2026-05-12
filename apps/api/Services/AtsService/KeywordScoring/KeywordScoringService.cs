@@ -22,7 +22,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         };
     }
 
-    private static KeywordScoreObject ScoreKeyword(KeywordAnalysisObject keyword)
+    private static KeywordScoreObject ScoreKeyword(KeywordAnalysisItemResponse keyword)
     {
         var multiplier = GetRequirementMultiplier(keyword.Requirement);
         var contextPoints = GetContextPoints(keyword);
@@ -53,7 +53,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         };
     }
 
-    private static int GetContextPoints(KeywordAnalysisObject keyword)
+    private static int GetContextPoints(KeywordAnalysisItemResponse keyword)
     {
         if (!keyword.Present)
         {

@@ -1,5 +1,5 @@
 using ResumeReview.Api.Dtos.Responses;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -99,7 +99,7 @@ public class KeywordScoringServiceTests
         return new KeywordScoringService();
     }
 
-    private static KeywordAnalysisResponse CreateResponse(params KeywordAnalysisObject[] keywords)
+    private static KeywordAnalysisResponse CreateResponse(params KeywordAnalysisItemResponse[] keywords)
     {
         return new KeywordAnalysisResponse
         {
@@ -107,13 +107,13 @@ public class KeywordScoringServiceTests
         };
     }
 
-    private static KeywordAnalysisObject CreateKeyword(
+    private static KeywordAnalysisItemResponse CreateKeyword(
         bool present = true,
         int tier = 0,
         string requirement = "must_have",
         KeywordContextTypeResponse? contextType = null)
     {
-        return new KeywordAnalysisObject
+        return new KeywordAnalysisItemResponse
         {
             Keyword = "React",
             Present = present,

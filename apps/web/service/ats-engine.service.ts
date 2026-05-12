@@ -94,16 +94,16 @@ export async function runAtsEngine({
     "Keyword extraction failed.",
   );
 
-  onStageChange?.("contextual-keyword-scoring");
+  onStageChange?.("keyword-analysis");
   const contextualFormData = new FormData();
   contextualFormData.append("resume", resumeFile);
   contextualFormData.append("keywords_json", JSON.stringify(keywordExtraction));
   contextualFormData.append("ai_model", aiModel);
 
   const contextualScoring = await postForm<AtsKeywordAnalysisResponse>(
-    "/api/ats-engine/contextual-keyword-scoring",
+    "/api/ats-engine/keyword-analysis",
     contextualFormData,
-    "Contextual keyword scoring failed.",
+    "Keyword analysis failed.",
   );
 
   onStageChange?.("keyword-scoring");

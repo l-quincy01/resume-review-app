@@ -4,13 +4,13 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.Schemas;
 using ResumeReview.Api.Services.Providers.OpenAI;
 
 namespace ResumeReview.Api.Services.AtsService.Providers.OpenAI;
 
-public sealed class OpenAIKeyWordAnalysisService : IKeyWordAnalysisService
+public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
 {
     private const string SchemaName = "ats_contextual_keyword_scoring";
 
@@ -18,14 +18,14 @@ public sealed class OpenAIKeyWordAnalysisService : IKeyWordAnalysisService
     private readonly OpenAiOptions _options;
     private readonly OpenAiRetryPolicy _retryPolicy;
     private readonly KeywordAnalysisMerger _merger;
-    private readonly ILogger<OpenAIKeyWordAnalysisService> _logger;
+    private readonly ILogger<OpenAiKeywordAnalysisService> _logger;
 
-    public OpenAIKeyWordAnalysisService(
+    public OpenAiKeywordAnalysisService(
         HttpClient httpClient,
         IOptions<OpenAiOptions> options,
         OpenAiRetryPolicy retryPolicy,
         KeywordAnalysisMerger merger,
-        ILogger<OpenAIKeyWordAnalysisService> logger)
+        ILogger<OpenAiKeywordAnalysisService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;

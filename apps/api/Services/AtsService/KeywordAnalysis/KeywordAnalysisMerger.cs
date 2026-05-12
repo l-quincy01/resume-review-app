@@ -1,14 +1,12 @@
 using ResumeReview.Api.Dtos.Responses;
 
-namespace ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+namespace ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 
 public sealed class KeywordAnalysisMerger
 {
     private const int MaxEvidenceSnippets = 3;
 
-    public KeywordAnalysisResponse Merge(
-        KeywordExtractionResponse stageBKeywords,
-        KeywordAnalysisResponse llmResponse)
+    public KeywordAnalysisResponse Merge(KeywordExtractionResponse stageBKeywords, KeywordAnalysisResponse llmResponse)
     {
         var llmScores = llmResponse.KeywordScores
             .GroupBy(score => score.Keyword, StringComparer.OrdinalIgnoreCase)
@@ -29,11 +27,11 @@ public sealed class KeywordAnalysisMerger
         };
     }
 
-    private static KeywordAnalysisObject InjectMetadata(
+    private static KeywordAnalysisItemResponse InjectMetadata(
         KeywordExtractionItemResponse keyword,
-        KeywordAnalysisObject score)
+        KeywordAnalysisItemResponse score)
     {
-        return new KeywordAnalysisObject
+        return new KeywordAnalysisItemResponse
         {
             Keyword = keyword.Keyword,
             Present = score.Present,
@@ -49,9 +47,9 @@ public sealed class KeywordAnalysisMerger
         };
     }
 
-    private static KeywordAnalysisObject CreateMissingScore(string keyword)
+    private static KeywordAnalysisItemResponse CreateMissingScore(string keyword)
     {
-        return new KeywordAnalysisObject
+        return new KeywordAnalysisItemResponse
         {
             Keyword = keyword,
             Present = false,

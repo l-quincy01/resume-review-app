@@ -1,8 +1,8 @@
 using ResumeReview.Api.Dtos.Responses;
 
-namespace ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+namespace ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 
-public interface IKeyWordAnalysisService
+public interface IKeywordAnalysisService
 {
     Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
         string aiModel,

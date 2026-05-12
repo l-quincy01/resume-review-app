@@ -32,7 +32,7 @@ test.describe("ATS Engine section", () => {
     expect(calls).toEqual([
       "header-validation",
       "keyword-extraction",
-      "contextual-keyword-scoring",
+      "keyword-analysis",
       "keyword-scoring",
       "final-assessment",
     ]);

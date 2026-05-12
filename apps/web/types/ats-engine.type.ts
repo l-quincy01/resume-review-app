@@ -140,6 +140,6 @@ export interface AtsEnginePipelineResult {
 export type AtsEngineStage =
   | "header-validation"
   | "keyword-extraction"
-  | "contextual-keyword-scoring"
+  | "keyword-analysis"
   | "keyword-scoring"
   | "final-assessment";

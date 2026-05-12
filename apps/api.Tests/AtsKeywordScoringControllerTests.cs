@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -11,7 +11,7 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class KeywordAnalysisTests
+public class KeywordScoringControllerTests
 {
     [Fact]
     public void ScoreKeywords_RejectsMissingBody()
@@ -76,12 +76,12 @@ public class KeywordAnalysisTests
         Assert.Equal(29, score.KeywordScore);
     }
 
-    private static KeywordAnalysisObject CreateController()
+    private static KeywordScoringController CreateController()
     {
-        return new KeywordAnalysisObject(new KeywordScoringService());
+        return new KeywordScoringController(new KeywordScoringService());
     }
 
-    private static KeywordScoringRequest CreateRequest(params KeywordAnalysisObject[] keywords)
+    private static KeywordScoringRequest CreateRequest(params KeywordAnalysisItemResponse[] keywords)
     {
         return new KeywordScoringRequest
         {
@@ -89,11 +89,11 @@ public class KeywordAnalysisTests
         };
     }
 
-    private static KeywordAnalysisObject CreateKeyword(
+    private static KeywordAnalysisItemResponse CreateKeyword(
         int tier = 0,
         string requirement = "must_have")
     {
-        return new KeywordAnalysisObject
+        return new KeywordAnalysisItemResponse
         {
             Keyword = "React",
             Present = true,

@@ -5,7 +5,7 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -14,7 +14,7 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class KeywordScoringControllerTests
+public class KeywordAnalysisControllerTests
 {
     [Fact]
     public async Task ScoreKeywords_RejectsMissingResume()
@@ -117,7 +117,7 @@ public class KeywordScoringControllerTests
             {
                 KeywordScores =
                 [
-                    new KeywordAnalysisObject
+                    new KeywordAnalysisItemResponse
                     {
                         Keyword = "React",
                         Present = true
@@ -144,7 +144,7 @@ public class KeywordScoringControllerTests
     {
         const string resumeText = "SENSITIVE_RESUME_TEXT";
         var keywordsJson = CreateKeywordsJson("SENSITIVE_KEYWORD");
-        var logger = new ListLogger<KeywordScoringController>();
+        var logger = new ListLogger<KeywordAnalysisController>();
         var controller = CreateController(
             extractor: new StubResumeTextExtractor(resumeText),
             service: new StubContextualKeywordScoringService { ThrowOnCall = true },
@@ -159,22 +159,22 @@ public class KeywordScoringControllerTests
         Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains("SENSITIVE_KEYWORD"));
     }
 
-    private static KeywordScoringController CreateController(
+    private static KeywordAnalysisController CreateController(
         OpenAiOptions? options = null,
         IResumeTextExtractor? extractor = null,
-        IKeyWordAnalysisService? service = null,
-        ILogger<KeywordScoringController>? logger = null)
+        IKeywordAnalysisService? service = null,
+        ILogger<KeywordAnalysisController>? logger = null)
     {
         options ??= new OpenAiOptions
         {
             MaxResumeBytes = 1024
         };
 
-        return new KeywordScoringController(
+        return new KeywordAnalysisController(
             extractor ?? new StubResumeTextExtractor(""),
             service ?? new StubContextualKeywordScoringService(),
             Microsoft.Extensions.Options.Options.Create(options),
-            logger ?? new ListLogger<KeywordScoringController>());
+            logger ?? new ListLogger<KeywordAnalysisController>());
     }
 
     private static KeywordAnalysisRequest CreateRequest(
@@ -244,7 +244,7 @@ public class KeywordScoringControllerTests
         }
     }
 
-    private sealed class StubContextualKeywordScoringService : IKeyWordAnalysisService
+    private sealed class StubContextualKeywordScoringService : IKeywordAnalysisService
     {
         public KeywordAnalysisResponse Response { get; set; } = new();
         public bool ThrowOnCall { get; set; }

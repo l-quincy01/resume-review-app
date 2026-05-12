@@ -4,7 +4,7 @@ using ResumeReview.Api.Services.Ai.Providers.OpenAi;
 using ResumeReview.Api.Services.JobSearchService.Listings;
 using ResumeReview.Api.Services.JobSearchService.Providers.OpenAI;
 using ResumeReview.Api.Services.Tasks;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -87,7 +87,7 @@ try
         client.Timeout = TimeSpan.FromSeconds(openAiOptions.RequestTimeoutSeconds);
     });
 
-    builder.Services.AddHttpClient<IKeyWordAnalysisService, OpenAIKeyWordAnalysisService>(client =>
+    builder.Services.AddHttpClient<IKeywordAnalysisService, OpenAiKeywordAnalysisService>(client =>
     {
         client.Timeout = TimeSpan.FromSeconds(openAiOptions.RequestTimeoutSeconds);
     });

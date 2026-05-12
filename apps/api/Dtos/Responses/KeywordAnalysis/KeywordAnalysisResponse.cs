@@ -6,10 +6,10 @@ namespace ResumeReview.Api.Dtos.Responses;
 public sealed class KeywordAnalysisResponse
 {
     [JsonPropertyName("keyword_scores")]
-    public List<KeywordAnalysisObject> KeywordScores { get; set; } = [];
+    public List<KeywordAnalysisItemResponse> KeywordScores { get; set; } = [];
 }
 
-public sealed class KeywordAnalysisObject
+public sealed class KeywordAnalysisItemResponse
 {
     [JsonPropertyName("keyword")]
     public string Keyword { get; set; } = string.Empty;

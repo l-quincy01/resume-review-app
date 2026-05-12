@@ -201,9 +201,9 @@ export async function mockAtsEnginePipeline(page: Page) {
   });
 
   await page.route(
-    "**/api/ats-engine/contextual-keyword-scoring",
+    "**/api/ats-engine/keyword-analysis",
     async (route) => {
-      calls.push("contextual-keyword-scoring");
+      calls.push("keyword-analysis");
       await fulfillJson(route, atsContextualScoringResponse);
     },
   );

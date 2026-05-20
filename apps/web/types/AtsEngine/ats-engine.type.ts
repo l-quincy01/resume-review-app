@@ -73,18 +73,6 @@ export interface AtsEvidence {
   matched_term: string;
 }
 
-export interface AtsFinalAssessmentResponse {
-  job_title: string;
-  ats_readiness_score: number;
-  overall_keyword_score: number;
-  header_quality_score: number;
-  coverage: AtsCoverage;
-  tier_breakdown: AtsTierBreakdown;
-  critical_gaps: AtsCriticalGap[];
-  strengths: AtsStrength[];
-  recommendations: AtsRecommendation[];
-}
-
 export interface AtsCoverage {
   overall_presence_rate: number;
   tier_0_coverage: number;
@@ -149,3 +137,15 @@ export type AtsEngineStage =
   | "keyword-analysis"
   | "keyword-scoring"
   | "final-assessment";
+
+export interface AtsFinalAssessmentResponse {
+  job_title: string;
+  ats_readiness_score: number;
+  overall_keyword_score: number;
+  header_quality_score: number;
+  coverage: AtsCoverage;
+  tier_breakdown: AtsTierBreakdown;
+  critical_gaps: AtsCriticalGap[];
+  strengths: AtsStrength[];
+  recommendations: AtsRecommendation[];
+}

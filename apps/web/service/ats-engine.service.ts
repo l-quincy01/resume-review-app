@@ -7,7 +7,7 @@ import {
   AtsHeaderValidationResponse,
   AtsKeywordExtractionResponse,
   AtsKeywordScoringResponse,
-} from "@/types/ats-engine.type";
+} from "@/types/AtsEngine/ats-engine.type";
 
 export type RunAtsEngineInput = {
   aiModel: string;

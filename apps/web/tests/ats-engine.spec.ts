@@ -21,15 +21,72 @@ test.describe("ATS Engine section", () => {
 
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
     await expect(page.getByText("ATS Header Validation")).toBeVisible();
-    await expect(page.getByText("ATS Readiness")).toBeVisible();
-    await expect(page.getByText("82/100")).toBeVisible();
+    await expect(page.getByText("Weighted Keyword score")).toBeVisible();
+    await expect(page.getByText("Present:").first()).toBeVisible();
+    await expect(page.getByText("React").first()).toBeVisible();
+    await expect(page.getByText("Missing:").first()).toBeVisible();
+    await expect(page.getByText("TypeScript").first()).toBeVisible();
+    await expect(page.getByText("Keyword Usage", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        "Strong contextual use: this keyword is supported by multiple quality signals.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Add a measurable result or metric.").first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Placed in a relevant resume section.").first(),
+    ).toBeVisible();
+    await expect(page.getByText("Resume Context").first()).toBeVisible();
+    await expect(page.getByText("Matched: React")).toBeVisible();
+    await expect(
+      page.getByText("Built React dashboards that improved reporting speed by 35%."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("No resume snippet returned for this keyword."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Stuffed Keywords", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Keywords found in the resume but not supported by achievement, metric, action, or section context.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Docker").first()).toBeVisible();
+    await expect(page.getByText("Keyword Feedback")).toBeVisible();
     await expect(page.getByText("Critical Gaps")).toBeVisible();
-    await expect(page.getByText("Missing: TypeScript")).toBeVisible();
-    await expect(page.getByText("Used for typed frontend development.").first()).toBeVisible();
     await expect(page.getByText("Strengths")).toBeVisible();
-    await expect(page.getByText("Used to build frontend interfaces.")).toBeVisible();
-    await expect(page.getByText("Well contextualised with an action verb")).toBeVisible();
-    await expect(page.getByText("Add TypeScript naturally")).toBeVisible();
+    await expect(
+      page.getByText("Weak Keyword Usage", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Recommendations", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Well contextualised with an action verb"),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Keyword appears in the resume, but it is not supported by achievement, metric, action, or section context.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Add these keywords naturally into a relevant section in your resume.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText("Improve Weak Keyword Usage")).toBeVisible();
+    await expect(
+      page.getByText("Add a measurable result or metric.").last(),
+    ).toBeVisible();
+    await expect(page.getByText("Fix Stuffed Keywords")).toBeVisible();
+    await expect(
+      page.getByText(
+        "Use this keyword in a truthful Work Experience or Projects bullet with an action verb and measurable result, or remove it if it is only listed without context.",
+      ),
+    ).toBeVisible();
 
     expect(calls).toEqual([
       "header-validation",
@@ -75,7 +132,8 @@ test.describe("ATS Engine section", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     await expect(page.getByText("ATS Header Validation")).toBeVisible();
-    await expect(page.getByText("ATS Readiness")).not.toBeVisible();
+    await expect(page.getByText("Weighted Keyword score")).not.toBeVisible();
+    await expect(page.getByText("Keyword Usage")).not.toBeVisible();
     expect(calls).toEqual(["header-validation"]);
   });
 

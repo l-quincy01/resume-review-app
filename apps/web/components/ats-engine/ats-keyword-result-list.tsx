@@ -5,7 +5,7 @@ import {
   AtsCriticalGap,
   AtsRecommendation,
   AtsStrength,
-} from "@/types/ats-engine.type";
+} from "@/types/AtsEngine/ats-engine.type";
 
 type AtsKeywordResultItem = AtsCriticalGap | AtsStrength | AtsRecommendation;
 
@@ -39,14 +39,19 @@ export default function AtsKeywordResultList({
             </div>
           </div>
           <div className="text-muted-foreground">{item.context}</div>
-          <div className="text-muted-foreground">{getItemBody(item, variant)}</div>
+          <div className="text-muted-foreground">
+            {getItemBody(item, variant)}
+          </div>
         </li>
       ))}
     </ResultList>
   );
 }
 
-function getItemMeta(item: AtsKeywordResultItem, variant: AtsKeywordResultListProps["variant"]) {
+function getItemMeta(
+  item: AtsKeywordResultItem,
+  variant: AtsKeywordResultListProps["variant"],
+) {
   if (variant === "strength" && "score" in item) {
     return `${item.score}/100`;
   }
@@ -58,7 +63,10 @@ function getItemMeta(item: AtsKeywordResultItem, variant: AtsKeywordResultListPr
   return "";
 }
 
-function getItemBody(item: AtsKeywordResultItem, variant: AtsKeywordResultListProps["variant"]) {
+function getItemBody(
+  item: AtsKeywordResultItem,
+  variant: AtsKeywordResultListProps["variant"],
+) {
   if (variant === "recommendation" && "suggestion" in item) {
     return item.suggestion;
   }

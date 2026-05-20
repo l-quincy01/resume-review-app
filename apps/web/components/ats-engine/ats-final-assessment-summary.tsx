@@ -1,71 +1,133 @@
 "use client";
 
-import { AtsFinalAssessmentResponse } from "@/types/ats-engine.type";
+import {
+  AtsEnginePipelineResult,
+  AtsFinalAssessmentResponse,
+  AtsScoredKeyword,
+} from "@/types/AtsEngine/ats-engine.type";
 import AtsCoverageSummary from "./ats-coverage-summary";
 import AtsKeywordResultList from "./ats-keyword-result-list";
+import AtsKeywordTypeAccordion from "./ats-keyword-type-accordion";
 import AtsTierBreakdownSummary from "./ats-tier-breakdown-summary";
 import ScoreTile from "./score-tile";
+// import { Accordion } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import KeywordTypePresenceTile from "./tiles/KeywordTypePresenceTile";
+import AtsKeywordUsage from "./ats-keyword-usage";
+import AtsKeywordFeedback from "./ats-keyword-feedback";
 
 interface AtsFinalAssessmentSummaryProps {
   assessment: AtsFinalAssessmentResponse;
+  keywordScores: AtsScoredKeyword[];
+  atsEnginePipelineResult: AtsEnginePipelineResult;
 }
 
 export default function AtsFinalAssessmentSummary({
   assessment,
+  keywordScores,
+  atsEnginePipelineResult,
 }: AtsFinalAssessmentSummaryProps) {
+  const singleWordMetrics = getKeywordTypeMetrics(keywordScores, "single_word");
+  const multiWordMetrics = getKeywordTypeMetrics(keywordScores, "multi_word");
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col">
-          <div className="text-sm text-muted-foreground">
-            {assessment.job_title || "ATS assessment"}
-          </div>
-          <div className="text-lg font-semibold">ATS Readiness</div>
-        </div>
+    <div className="flex flex-col gap-4 border-t">
+      <Accordion
+        type="multiple"
+        defaultValue={["default"]}
+        className="rounded-md border-0 border-none"
+      >
+        <AccordionItem value={"default"}>
+          <AccordionTrigger className="w-full">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between w-full">
+              <div className="flex flex-col">
+               
+                <div className="text-lg font-semibold">
+                  Weighted Keyword score
+                </div>
+              </div>
 
-        <div className="text-xl text-muted-foreground font-bold">
-          <span className="font-extrabold text-4xl text-card-foreground">
-            {assessment.ats_readiness_score}
-          </span>
-          /100
-        </div>
-      </div>
+              <div className="text-xl text-muted-foreground font-bold">
+                <span className="font-extrabold text-4xl text-card-foreground">
+                  {assessment.overall_keyword_score}
+                </span>
+                /100
+              </div>
+            </div>
+          </AccordionTrigger>
 
-      <div className="grid gap-2 md:grid-cols-3">
-        <ScoreTile
-          label="Keyword score"
-          value={assessment.overall_keyword_score}
-        />
-        <ScoreTile
-          label="Header score"
-          value={assessment.header_quality_score}
-        />
-        <ScoreTile
-          label="Presence rate"
-          value={assessment.coverage.overall_presence_rate}
-        />
-      </div>
+          <AccordionContent className="flex flex-col gap-4 h-fit">
+            <div className="flex flex-col gap-2 w-full">
+      
+       
+            </div>
 
-      <div className="grid gap-2 md:grid-cols-2">
-        <AtsCoverageSummary coverage={assessment.coverage} />
-        <AtsTierBreakdownSummary tierBreakdown={assessment.tier_breakdown} />
-      </div>
+      
+            <div className="text-lg font-semibold">Keyword Coverage</div>
+            <AtsCoverageSummary
+              tierBreakdown={assessment.tier_breakdown}
+              keywordScores={keywordScores}
+              coverage={assessment.coverage}
+            />
 
-      <AtsKeywordResultList
-        title="Critical Gaps"
-        items={assessment.critical_gaps}
-        variant="critical-gap"
-      />
-      <AtsKeywordResultList
-        title="Strengths"
-        items={assessment.strengths}
-        variant="strength"
-      />
-      <AtsKeywordResultList
-        title="Recommendations"
-        items={assessment.recommendations}
-        variant="recommendation"
-      />
+            <div className="flex flex-col gap-2">
+              <AtsTierBreakdownSummary
+                tierBreakdown={assessment.tier_breakdown}
+                keywordScores={keywordScores}
+              />
+            </div>
+
+            {/* <AtsKeywordTypeAccordion keywordScores={keywordScores} /> */}
+
+            <AtsKeywordUsage
+              atsContextType={
+                atsEnginePipelineResult.contextualScoring?.keyword_scores
+              }
+              atsCriticalGap={
+                atsEnginePipelineResult.finalAssessment?.critical_gaps
+              }
+            />
+
+            <AtsKeywordFeedback
+              atsStrength={atsEnginePipelineResult.finalAssessment?.strengths}
+              recommendations={
+                atsEnginePipelineResult.finalAssessment?.recommendations
+              }
+              atsContextType={
+                atsEnginePipelineResult.contextualScoring?.keyword_scores
+              }
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
+}
+
+interface KeywordTypeMetrics {
+  present: number;
+  total: number;
+  presenceRate: number;
+}
+
+function getKeywordTypeMetrics(
+  keywordScores: AtsScoredKeyword[],
+  keywordType: "single_word" | "multi_word",
+): KeywordTypeMetrics {
+  const matchingKeywords = keywordScores.filter(
+    (keyword) => keyword.keyword_type === keywordType,
+  );
+  const present = matchingKeywords.filter((keyword) => keyword.present).length;
+  const total = matchingKeywords.length;
+
+  return {
+    present,
+    total,
+    presenceRate: total === 0 ? 0 : Math.round((present / total) * 100),
+  };
 }

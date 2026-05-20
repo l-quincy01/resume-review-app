@@ -33,7 +33,7 @@ import { jobListingWords, loadingWords } from "@/constants/constants";
 import { apiUrl } from "@/lib/api";
 import { clientLogger } from "@/lib/client-logger";
 import { runAtsEngine } from "@/service/ats-engine.service";
-import { AtsEnginePipelineResult } from "@/types/ats-engine.type";
+import { AtsEnginePipelineResult } from "@/types/AtsEngine/ats-engine.type";
 import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
 
 export default function Page() {
@@ -313,6 +313,7 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* QUALITATIVE ANALYSIS */}
               <div className=" md:w-1/2 md:p-2 flex flex-col divide-y">
                 {reportData?.atsContent && (
                   <Ats
@@ -324,11 +325,19 @@ export default function Page() {
                   reportData.jobMatch.overallScore !== 0 && (
                     <JobMatch jobMatch={reportData.jobMatch} />
                   )}
+
+                {/* QUANTITATIVE ANALYSIS */}
+                {atsEngineResult && (
+                  <AtsEngineResults result={atsEngineResult} />
+                )}
+
+                {/* JOB RECOMMENDATION  */}
                 {reportData?.jobRecommendation && (
                   <Recommendations
                     jobRecommendation={reportData.jobRecommendation}
                   />
                 )}
+
                 {isLoadingJobListings && (
                   <div className="w-full flex flex-col gap-2 items-start justify-center px-12 py-2">
                     <ShimmerText className="text-muted-foreground text-sm">
@@ -357,7 +366,6 @@ export default function Page() {
                     </div>
                   </div>
                 )}
-                {atsEngineResult && <AtsEngineResults result={atsEngineResult} />}
               </div>
             </div>
           </div>

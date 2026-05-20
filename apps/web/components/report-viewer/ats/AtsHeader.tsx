@@ -7,11 +7,11 @@ export interface props {
 }
 
 export default function AtsHeader({ atsContent }: props) {
-  const totalScore = atsContent.content
+  const scores = atsContent.content
     .map((item) => item.score)
-    .reduce((sum, score) => sum + score, 0);
-
-  const avgScore = Math.round(totalScore / atsContent.content.length);
+    .filter((score) => Number.isFinite(score));
+  const totalScore = scores.reduce((sum, score) => sum + score, 0);
+  const avgScore = scores.length === 0 ? 0 : Math.round(totalScore / scores.length);
 
   return (
     <div className="flex flex-col gap-2 p-2">
@@ -40,12 +40,20 @@ export default function AtsHeader({ atsContent }: props) {
             <div className="flex flex-row w-full justify-between items-start text-xs">
               {" "}
               <span className="font-semibold "> {item.section}</span>
-              <span>{item.score / 10}/10</span>
+              <span>{formatScore(item.score)}/10</span>
             </div>
-            <Progress value={item.score} />
+            <Progress value={toSafeScore(item.score)} />
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+function formatScore(score: number) {
+  return toSafeScore(score) / 10;
+}
+
+function toSafeScore(score: number) {
+  return Number.isFinite(score) ? score : 0;
 }

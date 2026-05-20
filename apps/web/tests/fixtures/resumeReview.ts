@@ -25,17 +25,6 @@ export const resumeReviewResponse = {
     personalPronounCheck: [],
     passiveVoiceCheck: [],
   },
-  jobMatch: {
-    name: "Backend Developer",
-    targetJob: [
-      {
-        score: 80,
-        type: "Skills Match",
-        content: "Strong API and backend alignment.",
-      },
-    ],
-    overallScore: 80,
-  },
   atsContent: {
     heading: {
       section: "ATS",

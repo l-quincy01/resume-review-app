@@ -72,20 +72,21 @@ export async function runAtsEngine({
   const headerFormData = new FormData();
   headerFormData.append("resume", resumeFile);
 
-  const headerValidation = await postForm<AtsHeaderValidationResponse>(
+  const headerValidationPromise = postForm<AtsHeaderValidationResponse>(
     "/api/ats-engine/header-validation",
     headerFormData,
     "Header validation failed.",
   );
 
   if (!jobDescription.trim()) {
+    const headerValidation = await headerValidationPromise;
     return {
       headerValidation,
     };
   }
 
   onStageChange?.("keyword-extraction");
-  const keywordExtraction = await postJson<AtsKeywordExtractionResponse>(
+  const keywordExtractionPromise = postJson<AtsKeywordExtractionResponse>(
     "/api/ats-engine/keyword-extraction",
     {
       job_description: jobDescription.trim(),
@@ -93,6 +94,11 @@ export async function runAtsEngine({
     },
     "Keyword extraction failed.",
   );
+
+  const [headerValidation, keywordExtraction] = await Promise.all([
+    headerValidationPromise,
+    keywordExtractionPromise,
+  ]);
 
   onStageChange?.("keyword-analysis");
   const contextualFormData = new FormData();

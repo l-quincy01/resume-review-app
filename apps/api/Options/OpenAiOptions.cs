@@ -10,6 +10,9 @@ public class OpenAiOptions
     public string[] AllowedModels { get; set; } = ["gpt-4.1-mini", "gpt-5-mini", "gpt-5.4", "chat-latest", "gpt-5-nano"];
     public int RequestTimeoutSeconds { get; set; } = 180;
     public int JobListingsTimeoutSeconds { get; set; } = 180;
+    public int ResumeReviewMaxOutputTokens { get; set; } = 3000;
+    public int KeywordExtractionMaxOutputTokens { get; set; } = 2500;
+    public int KeywordAnalysisMaxOutputTokens { get; set; } = 4000;
     public int MaxRetries { get; set; } = 2;
     public int RetryBaseDelayMilliseconds { get; set; } = 500;
     public int CircuitBreakerFailureThreshold { get; set; } = 5;

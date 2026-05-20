@@ -12,7 +12,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
     private readonly ILogger<ResumeAnalysisService> _logger;
 
     private readonly JobRecommendationTask _jobRecommendationTask;
-    private readonly JobMatchTask _jobMatchTask;
     private readonly AtsContentTask _atsContentTask;
     private readonly SpellingAndGrammarTask _spellingTask;
     private readonly JobSearchProfileTask _jobSearchProfileTask;
@@ -21,7 +20,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         IAiProviderClient aiProvider,
         ILogger<ResumeAnalysisService> logger,
         JobRecommendationTask jobRecommendationTask,
-        JobMatchTask jobMatchTask,
         AtsContentTask atsContentTask,
         SpellingAndGrammarTask spellingTask,
         JobSearchProfileTask jobSearchProfileTask)
@@ -29,7 +27,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         _aiProvider = aiProvider;
         _logger = logger;
         _jobRecommendationTask = jobRecommendationTask;
-        _jobMatchTask = jobMatchTask;
         _atsContentTask = atsContentTask;
         _spellingTask = spellingTask;
         _jobSearchProfileTask = jobSearchProfileTask;
@@ -63,15 +60,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                 warnings,
                 cancellationToken);
 
-            // var jobMatchTask = RunTaskAsync(
-            //     aiModel,
-            //     fileId,
-            //     _jobMatchTask,
-            //     "job match",
-            //     jobDescription,
-            //     warnings,
-            //     cancellationToken);
-
             var atsContentTask = RunTaskAsync(
                 aiModel,
                 fileId,
@@ -101,7 +89,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
             await Task.WhenAll(
                 jobRecommendationTask,
-                // jobMatchTask,
                 atsContentTask,
                 spellingTask,
                 jobSearchProfileTask);
@@ -109,7 +96,6 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             return new ResumeReviewResponse
             {
                 JobRecommendation = await jobRecommendationTask,
-                // JobMatch = await jobMatchTask,
                 AtsContent = await atsContentTask,
                 SpellingAndGrammar = await spellingTask,
                 JobSearchProfile = await jobSearchProfileTask,

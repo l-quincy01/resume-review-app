@@ -7,7 +7,6 @@ import ModelGrid from "@/components/report-viewer/model/ModelGrid";
 import Disclaimer from "@/components/resume/disclaimer";
 import React, { useCallback, useEffect, useState } from "react";
 import RecommendedListings from "@/components/report-viewer/recommendations/RecommendedListings";
-import JobMatch from "@/components/report-viewer/job/job-match";
 import {
   useAIModelStore,
   useCheckJobListings,
@@ -23,7 +22,6 @@ import {
 } from "@/types/payload/response-payload";
 import AtsHeaderSkeleton from "@/components/skeletons/AtsHeaderSkeleton";
 import AtsContentSkeleton from "@/components/skeletons/atsContentSkeleton";
-import JobMatchSkeleton from "@/components/skeletons/JobMatchSkeleton";
 import RecommendationsSkeleton from "@/components/skeletons/RecommendationsSkeleton";
 import RecommendedListingsSkeleton from "@/components/skeletons/RecommendedListingsSkeleton";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +33,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { runAtsEngine } from "@/service/ats-engine.service";
 import { AtsEnginePipelineResult } from "@/types/AtsEngine/ats-engine.type";
 import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
+import AtsEngineResultsSkeleton from "@/components/ats-engine/ats-engine-results-skeleton";
 
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +49,7 @@ export default function Page() {
   const [atsEngineResult, setAtsEngineResult] =
     useState<AtsEnginePipelineResult | null>(null);
   const [atsEngineError, setAtsEngineError] = useState<string | null>(null);
+  const [isAtsEngineLoading, setIsAtsEngineLoading] = useState(false);
 
   const aiModel = useAIModelStore((state) => state.aiModel);
 
@@ -110,6 +110,7 @@ export default function Page() {
       setJobListings(null);
       setAtsEngineResult(null);
       setAtsEngineError(null);
+      setIsAtsEngineLoading(true);
       setIsLoadingJobListings(false);
 
       const atsEnginePromise = runAtsEngine({
@@ -124,47 +125,43 @@ export default function Page() {
           });
         },
       })
-        .then((result) => ({ result, error: null }))
-        .catch((error) => ({ result: null, error }));
+        .then((result) => {
+          setAtsEngineResult(result);
+          clientLogger.info("ats_engine_completed", {
+            aiModel,
+            hasJobDescription: Boolean(jobDescription.trim()),
+            keywordCount: result.keywordExtraction?.keywords.length ?? 0,
+            scoredKeywordCount: result.keywordScoring?.keyword_scores.length ?? 0,
+          });
+        })
+        .catch((error) => {
+          setAtsEngineError(
+            error instanceof Error ? error.message : "ATS Engine assessment failed.",
+          );
+          clientLogger.error("ats_engine_failed", error, {
+            aiModel,
+            hasJobDescription: Boolean(jobDescription.trim()),
+          });
+        })
+        .finally(() => {
+          setIsAtsEngineLoading(false);
+        });
 
-      const result = await submitResumeReview({
+      const resumeReviewPromise = submitResumeReview({
         aiModel,
         resumeFile,
         jobDescription,
-      });
-
-      const atsEngineOutcome = await atsEnginePromise;
-
-      if (atsEngineOutcome.result) {
-        setAtsEngineResult(atsEngineOutcome.result);
-        clientLogger.info("ats_engine_completed", {
+      }).then((result) => {
+        setReportData(result);
+        clientLogger.info("resume_review_completed", {
           aiModel,
           hasJobDescription: Boolean(jobDescription.trim()),
-          keywordCount:
-            atsEngineOutcome.result.keywordExtraction?.keywords.length ?? 0,
-          scoredKeywordCount:
-            atsEngineOutcome.result.keywordScoring?.keyword_scores.length ?? 0,
+          checkJobListings,
         });
-      }
-
-      if (atsEngineOutcome.error) {
-        setAtsEngineError(
-          atsEngineOutcome.error instanceof Error
-            ? atsEngineOutcome.error.message
-            : "ATS Engine assessment failed.",
-        );
-        clientLogger.error("ats_engine_failed", atsEngineOutcome.error, {
-          aiModel,
-          hasJobDescription: Boolean(jobDescription.trim()),
-        });
-      }
-
-      setReportData(result);
-      clientLogger.info("resume_review_completed", {
-        aiModel,
-        hasJobDescription: Boolean(jobDescription.trim()),
-        checkJobListings,
       });
+
+      void atsEnginePromise;
+      await resumeReviewPromise;
     } catch (error) {
       clientLogger.error("resume_review_failed", error, {
         aiModel,
@@ -275,35 +272,6 @@ export default function Page() {
               isSubmitting={isSubmitting}
             />
           </div>
-        ) : isSubmitting ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col-reverse divide-y-accent md:gap-2 gap-8 md:flex-row   w-full md:divide-x items-start">
-              <div className="w-1/2 p-2 sticky top-16">
-                <div className="sticky top-16">
-                  <PdfViewer pdfUrl={`${fileUrl}`} />
-                </div>
-              </div>
-
-              <div className="w-1/2 p-2 flex flex-col divide-y">
-                <div className="w-full flex flex-col items-start justify-center px-12 py-2">
-                  <ShimmerText className="text-muted-foreground text-sm">
-                    <Typewriter
-                      words={loadingWords}
-                      speed={40}
-                      delayBetweenWords={2000}
-                      cursor={false}
-                    />
-                  </ShimmerText>
-
-                  <Progress value={progress} className="w-full" />
-                </div>
-                <AtsHeaderSkeleton />
-                <AtsContentSkeleton />
-                <JobMatchSkeleton />
-                <RecommendationsSkeleton />
-              </div>
-            </div>
-          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex flex-col-reverse divide-y-accent md:gap-2 gap-8 md:flex-row   w-full md:divide-x items-start">
@@ -315,18 +283,36 @@ export default function Page() {
 
               {/* QUALITATIVE ANALYSIS */}
               <div className=" md:w-1/2 md:p-2 flex flex-col divide-y">
+                {!reportData && isSubmitting && (
+                  <>
+                    <div className="w-full flex flex-col items-start justify-center px-12 py-2">
+                      <ShimmerText className="text-muted-foreground text-sm">
+                        <Typewriter
+                          words={loadingWords}
+                          speed={40}
+                          delayBetweenWords={2000}
+                          cursor={false}
+                        />
+                      </ShimmerText>
+
+                      <Progress value={progress} className="w-full" />
+                    </div>
+                    <AtsHeaderSkeleton />
+                    <AtsContentSkeleton />
+                    <RecommendationsSkeleton />
+                  </>
+                )}
                 {reportData?.atsContent && (
                   <Ats
                     atsReport={reportData.atsContent}
                     spellingAndGrammar={reportData.spellingAndGrammar}
                   />
                 )}
-                {reportData?.jobMatch &&
-                  reportData.jobMatch.overallScore !== 0 && (
-                    <JobMatch jobMatch={reportData.jobMatch} />
-                  )}
 
                 {/* QUANTITATIVE ANALYSIS */}
+                {isAtsEngineLoading && !atsEngineResult && !atsEngineError && (
+                  <AtsEngineResultsSkeleton />
+                )}
                 {atsEngineResult && (
                   <AtsEngineResults result={atsEngineResult} />
                 )}

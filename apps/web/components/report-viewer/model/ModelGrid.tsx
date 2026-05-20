@@ -16,6 +16,11 @@ const models = [
     value: "gpt-5-mini",
   },
   {
+    name: "GPT-5 Nano",
+    company: "OpenAI",
+    value: "gpt-5-nano",
+  },
+  {
     name: "GPT-5.4",
     company: "OpenAI",
     value: "gpt-5.4",
@@ -28,7 +33,7 @@ export default function ModelGrid() {
 
   return (
     <div className="p-2">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {models.map((model) => {
           const isSelected = aiModel === model.value;
 

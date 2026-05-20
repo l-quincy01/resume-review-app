@@ -64,7 +64,6 @@ try
 
 
     builder.Services.AddScoped<JobRecommendationTask>();
-    builder.Services.AddScoped<JobMatchTask>();
     builder.Services.AddScoped<AtsContentTask>();
     builder.Services.AddScoped<SpellingAndGrammarTask>();
     builder.Services.AddScoped<JobSearchProfileTask>();

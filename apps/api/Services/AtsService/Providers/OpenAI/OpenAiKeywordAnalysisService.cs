@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -45,32 +46,23 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
         CancellationToken cancellationToken = default)
     {
         var prompt = BuildPrompt(keywords, resumeText);
-        var requestBody = new
+        var input = new object[]
         {
-            model = aiModel,
-            input = new object[]
+            new
             {
-                new
+                role = "user",
+                content = new object[]
                 {
-                    role = "user",
-                    content = new object[]
-                    {
-                        new { type = "input_text", text = prompt }
-                    }
-                }
-            },
-            text = new
-            {
-                verbosity = "low",
-                format = new
-                {
-                    type = "json_schema",
-                    name = SchemaName,
-                    strict = true,
-                    schema = AtsContextualKeywordScoringSchema.Schema
+                    new { type = "input_text", text = prompt }
                 }
             }
         };
+        var requestBody = OpenAiResponsesRequestFactory.CreateStructuredRequest(
+            aiModel,
+            input,
+            SchemaName,
+            AtsContextualKeywordScoringSchema.Schema,
+            _options.KeywordAnalysisMaxOutputTokens);
         var json = JsonSerializer.Serialize(requestBody);
 
         try
@@ -81,6 +73,7 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
                 keywords.Keywords.Count,
                 resumeText.Length);
 
+            var stopwatch = Stopwatch.StartNew();
             using var response = await _retryPolicy.SendAsync(
                 async token =>
                 {
@@ -89,19 +82,28 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
                 },
                 "ATS contextual keyword scoring",
                 cancellationToken);
+            stopwatch.Stop();
             var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
+                var error = OpenAiErrorInfo.Parse(responseText);
                 _logger.LogError(
-                    "OpenAI ATS contextual keyword scoring failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
+                    "OpenAI ATS contextual keyword scoring failed. Model: {Model}. Status: {Status}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
+                    aiModel,
                     response.StatusCode,
-                    responseText.Length);
+                    stopwatch.ElapsedMilliseconds,
+                    responseText.Length,
+                    error.Type,
+                    error.Code,
+                    error.Param,
+                    error.Message);
 
                 throw new InvalidOperationException(
                     $"OpenAI ATS contextual keyword scoring failed: {response.StatusCode}.");
             }
 
+            var usage = OpenAiResponseUsageParser.Parse(responseText);
             var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
             var llmScores = JsonSerializer.Deserialize<KeywordAnalysisResponse>(
                 modelJson,
@@ -111,8 +113,16 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
                 }) ?? throw new InvalidOperationException("OpenAI ATS contextual keyword scoring returned an empty result.");
 
             _logger.LogInformation(
-                "ATS contextual keyword scoring succeeded. ReturnedKeywordCount: {ReturnedKeywordCount}.",
-                llmScores.KeywordScores.Count);
+                "ATS contextual keyword scoring succeeded. Model: {Model}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. ReturnedKeywordCount: {ReturnedKeywordCount}. InputTokens: {InputTokens}. OutputTokens: {OutputTokens}. TotalTokens: {TotalTokens}. CachedTokens: {CachedTokens}.",
+                aiModel,
+                stopwatch.ElapsedMilliseconds,
+                responseText.Length,
+                modelJson.Length,
+                llmScores.KeywordScores.Count,
+                usage.InputTokens,
+                usage.OutputTokens,
+                usage.TotalTokens,
+                usage.CachedTokens);
 
             return _merger.Merge(keywords, llmScores);
         }
@@ -136,7 +146,15 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
         KeywordExtractionResponse keywords,
         string resumeText)
     {
-        var keywordsJson = JsonSerializer.Serialize(keywords);
+        var keywordPayload = new
+        {
+            keywords = keywords.Keywords.Select(keyword => new
+            {
+                keyword = keyword.Keyword,
+                variations = keyword.Variations
+            })
+        };
+        var keywordsJson = JsonSerializer.Serialize(keywordPayload);
 
         return $$"""
 You are an ATS and resume expert. For each keyword provided, scan the entire resume and determine how it is used contextually.
@@ -159,7 +177,7 @@ Evidence rules:
 - Do not invent evidence. Use only resume text.
 
 Output rules:
-- Do not return a context field. The original job-description context is already supplied in JD Keywords and will be copied into the final response by the API.
+- Do not return a context field. The original job-description context will be copied into the final response by the API.
 
 Return ONLY valid JSON with NO additional text or markdown.
 

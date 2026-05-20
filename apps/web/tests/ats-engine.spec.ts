@@ -11,6 +11,7 @@ test.describe("ATS Engine section", () => {
     await page.route("**/api/resume-review", fulfillResumeReview);
 
     await page.goto("/resume");
+    await page.getByText("GPT-5 Nano").click();
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications with TypeScript.");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
@@ -47,7 +48,7 @@ test.describe("ATS Engine section", () => {
       page.getByText("No resume snippet returned for this keyword."),
     ).toBeVisible();
     await expect(
-      page.getByText("Stuffed Keywords", { exact: true }),
+      page.getByText("Stuffed Keywords", { exact: true }).first(),
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -59,7 +60,7 @@ test.describe("ATS Engine section", () => {
     await expect(page.getByText("Critical Gaps")).toBeVisible();
     await expect(page.getByText("Strengths")).toBeVisible();
     await expect(
-      page.getByText("Weak Keyword Usage", { exact: true }),
+      page.getByText("Weak Keyword Usage", { exact: true }).first(),
     ).toBeVisible();
     await expect(
       page.getByText("Recommendations", { exact: true }),
@@ -88,9 +89,12 @@ test.describe("ATS Engine section", () => {
       ),
     ).toBeVisible();
 
-    expect(calls).toEqual([
-      "header-validation",
-      "keyword-extraction",
+    expect(calls).toContain("header-validation");
+    expect(calls).toContain("keyword-extraction");
+    expect(calls.indexOf("keyword-analysis")).toBeGreaterThan(
+      calls.indexOf("keyword-extraction"),
+    );
+    expect(calls.slice(-3)).toEqual([
       "keyword-analysis",
       "keyword-scoring",
       "final-assessment",

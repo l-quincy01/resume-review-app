@@ -29,7 +29,7 @@ public class ResumeAnalysisServicePrivacyTests
     {
         var provider = new RecordingAiProviderClient
         {
-            ThrowOnSchemaName = "job_match"
+            ThrowOnSchemaName = "ats_content"
         };
         var service = CreateService(provider);
 
@@ -42,7 +42,7 @@ public class ResumeAnalysisServicePrivacyTests
             CancellationToken.None);
 
         Assert.Equal("file-test", provider.DeletedFileIds.Single());
-        Assert.Contains(response.Warnings, warning => warning.Contains("job match"));
+        Assert.Contains(response.Warnings, warning => warning.Contains("ATS content"));
     }
 
     [Fact]
@@ -76,7 +76,6 @@ public class ResumeAnalysisServicePrivacyTests
             provider,
             logger ?? new ListLogger<ResumeAnalysisService>(),
             new JobRecommendationTask(),
-            new JobMatchTask(),
             new AtsContentTask(),
             new SpellingAndGrammarTask(),
             new JobSearchProfileTask());

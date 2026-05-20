@@ -20,14 +20,10 @@ export default function AtsHeader({ atsContent }: props) {
           <div className=" text-lg font-semibold">
             {atsContent.resumeName} Resume Review Report¹
           </div>
-          {/* <div className=" text-sm text-muted-foreground">
-            Generated with {"Claude Opus 4.6"}
-          </div> */}
         </div>
 
         <div className="text-xl text-muted-foreground font-bold ">
           <span className="font-extrabold text-4xl text-card-foreground">
-            {/* {atsContent.heading.score / 10} */}
             {avgScore / 10}
           </span>
           {"/"}

@@ -23,13 +23,14 @@ INSTRUCTIONS:
 - heading.score should represent the overall ATS/readability strength of the resume.
 - resumeName should reflect the candidate name if visible in the resume; otherwise use "Candidate".
 - Review these sections where present:
-  - ATS Compaitablity
+
+
   - Professional summary
   - Work experience
   - Education
   - Projects
   - Skills
-  - Cerificates
+ 
 - If a section is missing but important, mention that as a weakness.
 - summary should briefly explain the quality of the section.
 - strengths should list what works well.
@@ -48,7 +49,7 @@ Return ONLY this JSON shape:
   "resumeName": "string",
   "content": [
     {
-      "section": "ATS Compaitablity | Professional summary | Work experience | Education | Projects | Skills | Cerificates",
+      "section": " Professional summary | Work experience | Education | Projects | Skills ",
       "summary": "string",
       "strengths": ["string"],
       "weaknesses": ["string"],

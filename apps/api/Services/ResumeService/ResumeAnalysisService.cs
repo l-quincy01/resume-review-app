@@ -63,14 +63,14 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                 warnings,
                 cancellationToken);
 
-            var jobMatchTask = RunTaskAsync(
-                aiModel,
-                fileId,
-                _jobMatchTask,
-                "job match",
-                jobDescription,
-                warnings,
-                cancellationToken);
+            // var jobMatchTask = RunTaskAsync(
+            //     aiModel,
+            //     fileId,
+            //     _jobMatchTask,
+            //     "job match",
+            //     jobDescription,
+            //     warnings,
+            //     cancellationToken);
 
             var atsContentTask = RunTaskAsync(
                 aiModel,
@@ -101,7 +101,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
             await Task.WhenAll(
                 jobRecommendationTask,
-                jobMatchTask,
+                // jobMatchTask,
                 atsContentTask,
                 spellingTask,
                 jobSearchProfileTask);
@@ -109,7 +109,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
             return new ResumeReviewResponse
             {
                 JobRecommendation = await jobRecommendationTask,
-                JobMatch = await jobMatchTask,
+                // JobMatch = await jobMatchTask,
                 AtsContent = await atsContentTask,
                 SpellingAndGrammar = await spellingTask,
                 JobSearchProfile = await jobSearchProfileTask,

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockAtsEnginePipeline } from "./fixtures/atsEngine";
-import { fulfillResumeReview, pdfBuffer } from "./fixtures/resumeReview";
+import { fulfillResumeReviewStream, pdfBuffer } from "./fixtures/resumeReview";
 
 test.describe("ATS Engine section", () => {
   test("runs the full ATS Engine sequence from the existing submit button", async ({
@@ -8,7 +8,7 @@ test.describe("ATS Engine section", () => {
   }) => {
     const calls = await mockAtsEnginePipeline(page);
 
-    await page.route("**/api/resume-review", fulfillResumeReview);
+    await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
 
     await page.goto("/resume");
     await page.getByText("GPT-5 Nano").click();
@@ -106,7 +106,7 @@ test.describe("ATS Engine section", () => {
   }) => {
     const calls: string[] = [];
 
-    await page.route("**/api/resume-review", fulfillResumeReview);
+    await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
     await page.route("**/api/ats-engine/header-validation", async (route) => {
       calls.push("header-validation");
       await route.fulfill({
@@ -142,7 +142,7 @@ test.describe("ATS Engine section", () => {
   });
 
   test("shows an ATS Engine error below the existing report when a stage fails", async ({ page }) => {
-    await page.route("**/api/resume-review", fulfillResumeReview);
+    await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
     await page.route("**/api/ats-engine/header-validation", async (route) => {
       await route.fulfill({
         status: 502,

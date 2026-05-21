@@ -8,4 +8,8 @@ public interface IResumeReviewService
     Task<ResumeReviewResponse> AnalyzeAsync(
         ResumeReviewRequest request,
         CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeStreamAsync(
+        ResumeReviewRequest request,
+        CancellationToken cancellationToken = default);
 }

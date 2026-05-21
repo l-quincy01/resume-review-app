@@ -28,6 +28,22 @@ public class ResumeReviewControllerValidationTests
     }
 
     [Fact]
+    public async Task Stream_RejectsNonPdfUploadsBeforeStreaming()
+    {
+        var controller = CreateController();
+        var request = new ResumeReviewRequest
+        {
+            AiModel = "gpt-4.1-mini",
+            Resume = CreateFile("resume.txt", "text/plain", 32)
+        };
+
+        var result = await controller.Stream(request, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("Only PDF", badRequest.Value!.ToString());
+    }
+
+    [Fact]
     public async Task Submit_RejectsOversizedPdfs()
     {
         var controller = CreateController(new OpenAiOptions
@@ -128,6 +144,25 @@ public class ResumeReviewControllerValidationTests
             LastRequest = request;
 
             return Task.FromResult(new ResumeReviewResponse());
+        }
+
+        public async IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeStreamAsync(
+            ResumeReviewRequest request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            WasCalled = true;
+            LastRequest = request;
+
+            yield return new ResumeReviewStreamEnvelope
+            {
+                EventName = "review_completed",
+                Data = new ResumeReviewStreamEvent
+                {
+                    Payload = new ResumeReviewResponse()
+                }
+            };
+
+            await Task.CompletedTask;
         }
     }
 }

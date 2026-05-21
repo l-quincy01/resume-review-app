@@ -1,3 +1,4 @@
+using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Models;
 using ResumeReview.Api.Services;
 using ResumeReview.Api.Services.Providers;
@@ -68,6 +69,59 @@ public class ResumeAnalysisServicePrivacyTests
         Assert.Contains(logger.Entries, entry => entry.Message.Contains("OpenAI file cleanup failed"));
     }
 
+    [Fact]
+    public async Task AnalyzeResumeStreamAsync_EmitsSectionEventsAndDeletesUploadedFile()
+    {
+        var provider = new RecordingAiProviderClient();
+        var service = CreateService(provider);
+
+        var events = await CollectEventsAsync(service.AnalyzeResumeStreamAsync(
+            "gpt-4.1-mini",
+            new MemoryStream([1, 2, 3]),
+            "resume.pdf",
+            "application/pdf",
+            "Build APIs",
+            CancellationToken.None));
+
+        Assert.Equal("review_started", events.First().EventName);
+        Assert.Contains(events, streamEvent =>
+            streamEvent.EventName == "section_started" &&
+            streamEvent.Data.Section == "ats_content");
+        Assert.Contains(events, streamEvent =>
+            streamEvent.EventName == "section_completed" &&
+            streamEvent.Data.Section == "ats_content");
+        Assert.Equal("review_completed", events.Last().EventName);
+        Assert.IsType<ResumeReviewResponse>(events.Last().Data.Payload);
+        Assert.Equal("file-test", provider.DeletedFileIds.Single());
+    }
+
+    [Fact]
+    public async Task AnalyzeResumeStreamAsync_EmitsSectionFailedAndContinues()
+    {
+        var provider = new RecordingAiProviderClient
+        {
+            ThrowOnSchemaName = "ats_content"
+        };
+        var service = CreateService(provider);
+
+        var events = await CollectEventsAsync(service.AnalyzeResumeStreamAsync(
+            "gpt-4.1-mini",
+            new MemoryStream([1, 2, 3]),
+            "resume.pdf",
+            "application/pdf",
+            "Build APIs",
+            CancellationToken.None));
+
+        Assert.Contains(events, streamEvent =>
+            streamEvent.EventName == "section_failed" &&
+            streamEvent.Data.Section == "ats_content" &&
+            streamEvent.Data.Warning!.Contains("ATS content"));
+        Assert.Contains(events, streamEvent =>
+            streamEvent.EventName == "section_completed" &&
+            streamEvent.Data.Section == "spelling_and_grammar");
+        Assert.Equal("review_completed", events.Last().EventName);
+    }
+
     private static ResumeAnalysisService CreateService(
         IAiProviderClient provider,
         ILogger<ResumeAnalysisService>? logger = null)
@@ -79,6 +133,19 @@ public class ResumeAnalysisServicePrivacyTests
             new AtsContentTask(),
             new SpellingAndGrammarTask(),
             new JobSearchProfileTask());
+    }
+
+    private static async Task<List<ResumeReviewStreamEnvelope>> CollectEventsAsync(
+        IAsyncEnumerable<ResumeReviewStreamEnvelope> events)
+    {
+        var collected = new List<ResumeReviewStreamEnvelope>();
+
+        await foreach (var streamEvent in events)
+        {
+            collected.Add(streamEvent);
+        }
+
+        return collected;
     }
 
     private sealed class RecordingAiProviderClient : IAiProviderClient

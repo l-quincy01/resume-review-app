@@ -2,7 +2,7 @@
 
 import PdfViewer from "@/components/pdf-viewer/PdfViewer";
 import Recommendations from "@/components/report-viewer/recommendations/Recommendations";
-import Ats from "@/components/report-viewer/ats/ats";
+import AtsContent from "@/components/report-viewer/ats/AtsContent";
 import ModelGrid from "@/components/report-viewer/model/ModelGrid";
 import Disclaimer from "@/components/resume/disclaimer";
 import React, { useCallback, useEffect, useState } from "react";
@@ -13,36 +13,36 @@ import {
   useJobDescriptionStore,
   useResumeFileStore,
 } from "@/stores/store";
-import { submitResumeReview } from "@/service/resume-review.service";
+import { submitResumeReviewStream } from "@/service/resume-review.service";
 import HomeHeader from "@/components/home/home-header";
 import ResumeReviewForm from "@/components/home/resume-review-form";
 import {
   JobListingsResponse,
   ResumeAnalysisResponse,
+  ResumeReviewStreamSection,
 } from "@/types/payload/response-payload";
-import AtsHeaderSkeleton from "@/components/skeletons/AtsHeaderSkeleton";
 import AtsContentSkeleton from "@/components/skeletons/atsContentSkeleton";
 import RecommendationsSkeleton from "@/components/skeletons/RecommendationsSkeleton";
 import RecommendedListingsSkeleton from "@/components/skeletons/RecommendedListingsSkeleton";
 import { Progress } from "@/components/ui/progress";
 import ShimmerText from "@/components/ui/shimmer-text";
 import { Typewriter } from "@/components/ui/typewriter";
-import { jobListingWords, loadingWords } from "@/constants/constants";
+import { jobListingWords } from "@/constants/constants";
 import { apiUrl } from "@/lib/api";
 import { clientLogger } from "@/lib/client-logger";
 import { runAtsEngine } from "@/service/ats-engine.service";
 import { AtsEnginePipelineResult } from "@/types/AtsEngine/ats-engine.type";
 import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
 import AtsEngineResultsSkeleton from "@/components/ats-engine/ats-engine-results-skeleton";
+import ResumeReviewProgressiveHeader from "@/components/report-viewer/progressive/resume-review-progressive-header";
 
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobListings, setIsLoadingJobListings] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
 
-  const [reportData, setReportData] = useState<ResumeAnalysisResponse | null>(
-    null,
-  );
+  const [reportData, setReportData] =
+    useState<Partial<ResumeAnalysisResponse> | null>(null);
   const [jobListings, setJobListings] = useState<JobListingsResponse | null>(
     null,
   );
@@ -50,6 +50,9 @@ export default function Page() {
     useState<AtsEnginePipelineResult | null>(null);
   const [atsEngineError, setAtsEngineError] = useState<string | null>(null);
   const [isAtsEngineLoading, setIsAtsEngineLoading] = useState(false);
+  const [isResumeReviewComplete, setIsResumeReviewComplete] = useState(false);
+  const [resumeReviewCompletedSections, setResumeReviewCompletedSections] =
+    useState<ResumeReviewStreamSection[]>([]);
 
   const aiModel = useAIModelStore((state) => state.aiModel);
 
@@ -111,6 +114,9 @@ export default function Page() {
       setAtsEngineResult(null);
       setAtsEngineError(null);
       setIsAtsEngineLoading(true);
+      setIsResumeReviewComplete(false);
+      setResumeReviewCompletedSections([]);
+      setProgress(0);
       setIsLoadingJobListings(false);
 
       const atsEnginePromise = runAtsEngine({
@@ -150,12 +156,49 @@ export default function Page() {
           setIsAtsEngineLoading(false);
         });
 
-      const resumeReviewPromise = submitResumeReview({
+      const resumeReviewPromise = submitResumeReviewStream({
         aiModel,
         resumeFile,
         jobDescription,
+        onSectionStarted: (section) => {
+          clientLogger.info("resume_review_section_started", {
+            aiModel,
+            section,
+          });
+        },
+        onSectionCompleted: (section, payload) => {
+          setReportData((current) =>
+            applyResumeReviewSection(current, section, payload),
+          );
+          setResumeReviewCompletedSections((current) =>
+            current.includes(section) ? current : [...current, section],
+          );
+          clientLogger.info("resume_review_section_completed", {
+            aiModel,
+            section,
+          });
+        },
+        onSectionFailed: (section, warning) => {
+          setReportData((current) => ({
+            ...(current ?? {}),
+            warnings: [...(current?.warnings ?? []), warning],
+          }));
+          clientLogger.error(
+            "resume_review_section_failed",
+            new Error(warning),
+            {
+              aiModel,
+              section,
+            },
+          );
+        },
+        onCompleted: (result) => {
+          setReportData(result);
+          setIsResumeReviewComplete(true);
+        },
       }).then((result) => {
         setReportData(result);
+        setIsResumeReviewComplete(true);
         clientLogger.info("resume_review_completed", {
           aiModel,
           hasJobDescription: Boolean(jobDescription.trim()),
@@ -227,6 +270,10 @@ export default function Page() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    if (!isSubmitting || isResumeReviewComplete) {
+      return;
+    }
+
     const duration = 60000;
     const intervalTime = 350;
     const steps = duration / intervalTime;
@@ -244,7 +291,14 @@ export default function Page() {
     }, intervalTime);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isResumeReviewComplete, isSubmitting]);
+
+  const resumeReviewProgress = isResumeReviewComplete
+    ? 100
+    : Math.max(
+        progress,
+        Math.min(95, resumeReviewCompletedSections.length * 22),
+      );
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -282,31 +336,26 @@ export default function Page() {
 
               {/* QUALITATIVE ANALYSIS */}
               <div className=" md:w-1/2 md:p-2 flex flex-col divide-y">
-                {!reportData && isSubmitting && (
-                  <>
-                    <div className="w-full flex flex-col items-start justify-center px-12 py-2">
-                      <ShimmerText className="text-muted-foreground text-sm">
-                        <Typewriter
-                          words={loadingWords}
-                          speed={40}
-                          delayBetweenWords={2000}
-                          cursor={false}
-                        />
-                      </ShimmerText>
-
-                      <Progress value={progress} className="w-full" />
-                    </div>
-                    <AtsHeaderSkeleton />
-                    <AtsContentSkeleton />
-                    <RecommendationsSkeleton />
-                  </>
+                {(isSubmitting || reportData) && (
+                  <ResumeReviewProgressiveHeader
+                    atsContent={reportData?.atsContent}
+                    aiModel={aiModel}
+                    isComplete={isResumeReviewComplete}
+                    progress={resumeReviewProgress}
+                    completedSections={resumeReviewCompletedSections}
+                    warnings={reportData?.warnings}
+                  />
                 )}
-                {reportData?.atsContent && (
-                  <Ats
-                    atsReport={reportData.atsContent}
+                {reportData?.atsContent && reportData?.spellingAndGrammar && (
+                  <AtsContent
+                    atsContent={reportData.atsContent}
                     spellingAndGrammar={reportData.spellingAndGrammar}
                   />
                 )}
+                {isSubmitting &&
+                  (!reportData?.atsContent || !reportData?.spellingAndGrammar) && (
+                    <AtsContentSkeleton />
+                  )}
 
                 {/* QUANTITATIVE ANALYSIS */}
                 {isAtsEngineLoading && !atsEngineResult && !atsEngineError && (
@@ -321,6 +370,9 @@ export default function Page() {
                   <Recommendations
                     jobRecommendation={reportData.jobRecommendation}
                   />
+                )}
+                {isSubmitting && !reportData?.jobRecommendation && (
+                  <RecommendationsSkeleton />
                 )}
 
                 {isLoadingJobListings && (
@@ -359,4 +411,34 @@ export default function Page() {
       </div>
     </div>
   );
+}
+
+function applyResumeReviewSection(
+  current: Partial<ResumeAnalysisResponse> | null,
+  section: ResumeReviewStreamSection,
+  payload: unknown,
+): Partial<ResumeAnalysisResponse> {
+  switch (section) {
+    case "ats_content":
+      return {
+        ...(current ?? {}),
+        atsContent: payload as ResumeAnalysisResponse["atsContent"],
+      };
+    case "spelling_and_grammar":
+      return {
+        ...(current ?? {}),
+        spellingAndGrammar:
+          payload as ResumeAnalysisResponse["spellingAndGrammar"],
+      };
+    case "job_recommendation":
+      return {
+        ...(current ?? {}),
+        jobRecommendation: payload as ResumeAnalysisResponse["jobRecommendation"],
+      };
+    case "job_search_profile":
+      return {
+        ...(current ?? {}),
+        jobSearchProfile: payload as ResumeAnalysisResponse["jobSearchProfile"],
+      };
+  }
 }

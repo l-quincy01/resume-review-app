@@ -13,7 +13,7 @@ namespace ResumeReview.Api.Services.AtsService.Providers.OpenAI;
 
 public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
 {
-    private const string SchemaName = "ats_contextual_keyword_scoring";
+    public const string SchemaName = "ats_contextual_keyword_scoring";
 
     private readonly HttpClient _httpClient;
     private readonly OpenAiOptions _options;
@@ -45,7 +45,112 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
         string resumeText,
         CancellationToken cancellationToken = default)
     {
-        var prompt = BuildPrompt(keywords, resumeText);
+        try
+        {
+            _logger.LogInformation(
+                "Starting ATS contextual keyword scoring. Model: {Model}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}. BatchSize: {BatchSize}.",
+                aiModel,
+                keywords.Keywords.Count,
+                resumeText.Length,
+                GetBatchSize());
+
+            var batchResponses = new List<KeywordAnalysisResponse>();
+            var batches = keywords.Keywords
+                .Chunk(GetBatchSize())
+                .Select((batch, index) => new KeywordExtractionResponse
+                {
+                    JobTitle = keywords.JobTitle,
+                    Keywords = batch.ToList()
+                })
+                .ToList();
+
+            for (var index = 0; index < batches.Count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var batchNumber = index + 1;
+                var batch = batches[index];
+
+                try
+                {
+                    var batchResponse = await ScoreKeywordBatchAsync(
+                        aiModel,
+                        batch,
+                        resumeText,
+                        batchNumber,
+                        batches.Count,
+                        cancellationToken);
+
+                    batchResponses.Add(batchResponse);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (OpenAiStructuredOutputException ex)
+                {
+                    _logger.LogWarning(
+                        "ATS contextual keyword scoring batch returned malformed JSON. Model: {Model}. Schema: {SchemaName}. BatchNumber: {BatchNumber}. KeywordCount: {KeywordCount}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. JsonPath: {JsonPath}. LineNumber: {LineNumber}. BytePositionInLine: {BytePositionInLine}. LikelyTruncated: {LikelyTruncated}.",
+                        ex.Model,
+                        ex.SchemaName,
+                        ex.BatchNumber,
+                        ex.KeywordCount,
+                        ex.ResponseBodyLength,
+                        ex.OutputLength,
+                        ex.JsonPath,
+                        ex.LineNumber,
+                        ex.BytePositionInLine,
+                        ex.LikelyTruncated);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        "ATS contextual keyword scoring batch failed. ExceptionType: {ExceptionType}. Model: {Model}. BatchNumber: {BatchNumber}. KeywordCount: {KeywordCount}.",
+                        ex.GetType().Name,
+                        aiModel,
+                        batchNumber,
+                        batch.Keywords.Count);
+                }
+            }
+
+            if (batchResponses.Count == 0)
+            {
+                throw new InvalidOperationException("All ATS contextual keyword scoring batches failed.");
+            }
+
+            var combinedLlmResponse = new KeywordAnalysisResponse
+            {
+                KeywordScores = batchResponses
+                    .SelectMany(response => response.KeywordScores)
+                    .ToList()
+            };
+
+            return _merger.Merge(keywords, combinedLlmResponse);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                "ATS contextual keyword scoring failed. ExceptionType: {ExceptionType}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}.",
+                ex.GetType().Name,
+                keywords.Keywords.Count,
+                resumeText.Length);
+
+            throw new InvalidOperationException("ATS contextual keyword scoring failed.");
+        }
+    }
+
+    private async Task<KeywordAnalysisResponse> ScoreKeywordBatchAsync(
+        string aiModel,
+        KeywordExtractionResponse keywords,
+        string resumeText,
+        int batchNumber,
+        int totalBatches,
+        CancellationToken cancellationToken)
+    {
+        var prompt = BuildPrompt(keywords, resumeText, batchNumber, totalBatches);
         var input = new object[]
         {
             new
@@ -65,86 +170,86 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
             _options.KeywordAnalysisMaxOutputTokens);
         var json = JsonSerializer.Serialize(requestBody);
 
-        try
-        {
-            _logger.LogInformation(
-                "Starting ATS contextual keyword scoring. Model: {Model}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}.",
-                aiModel,
-                keywords.Keywords.Count,
-                resumeText.Length);
+        _logger.LogInformation(
+            "Starting ATS contextual keyword scoring batch. Model: {Model}. BatchNumber: {BatchNumber}. TotalBatches: {TotalBatches}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}. MaxOutputTokens: {MaxOutputTokens}.",
+            aiModel,
+            batchNumber,
+            totalBatches,
+            keywords.Keywords.Count,
+            resumeText.Length,
+            _options.KeywordAnalysisMaxOutputTokens);
 
-            var stopwatch = Stopwatch.StartNew();
-            using var response = await _retryPolicy.SendAsync(
-                async token =>
-                {
-                    using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    return await _httpClient.PostAsync("responses", content, token);
-                },
-                "ATS contextual keyword scoring",
-                cancellationToken);
-            stopwatch.Stop();
-            var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+        var stopwatch = Stopwatch.StartNew();
+        using var response = await _retryPolicy.SendAsync(
+            async token =>
             {
-                var error = OpenAiErrorInfo.Parse(responseText);
-                _logger.LogError(
-                    "OpenAI ATS contextual keyword scoring failed. Model: {Model}. Status: {Status}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
-                    aiModel,
-                    response.StatusCode,
-                    stopwatch.ElapsedMilliseconds,
-                    responseText.Length,
-                    error.Type,
-                    error.Code,
-                    error.Param,
-                    error.Message);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                return await _httpClient.PostAsync("responses", content, token);
+            },
+            $"ATS contextual keyword scoring batch {batchNumber}",
+            cancellationToken);
+        stopwatch.Stop();
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                throw new InvalidOperationException(
-                    $"OpenAI ATS contextual keyword scoring failed: {response.StatusCode}.");
-            }
-
-            var usage = OpenAiResponseUsageParser.Parse(responseText);
-            var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
-            var llmScores = JsonSerializer.Deserialize<KeywordAnalysisResponse>(
-                modelJson,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                }) ?? throw new InvalidOperationException("OpenAI ATS contextual keyword scoring returned an empty result.");
-
-            _logger.LogInformation(
-                "ATS contextual keyword scoring succeeded. Model: {Model}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. ReturnedKeywordCount: {ReturnedKeywordCount}. InputTokens: {InputTokens}. OutputTokens: {OutputTokens}. TotalTokens: {TotalTokens}. CachedTokens: {CachedTokens}.",
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = OpenAiErrorInfo.Parse(responseText);
+            _logger.LogError(
+                "OpenAI ATS contextual keyword scoring batch failed. Model: {Model}. Status: {Status}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. BatchNumber: {BatchNumber}. KeywordCount: {KeywordCount}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
                 aiModel,
+                response.StatusCode,
                 stopwatch.ElapsedMilliseconds,
                 responseText.Length,
-                modelJson.Length,
-                llmScores.KeywordScores.Count,
-                usage.InputTokens,
-                usage.OutputTokens,
-                usage.TotalTokens,
-                usage.CachedTokens);
-
-            return _merger.Merge(keywords, llmScores);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                "ATS contextual keyword scoring failed. ExceptionType: {ExceptionType}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}.",
-                ex.GetType().Name,
+                batchNumber,
                 keywords.Keywords.Count,
-                resumeText.Length);
+                error.Type,
+                error.Code,
+                error.Param,
+                error.Message);
 
-            throw new InvalidOperationException("ATS contextual keyword scoring failed.");
+            throw new InvalidOperationException(
+                $"OpenAI ATS contextual keyword scoring failed: {response.StatusCode}.");
         }
+
+        var usage = OpenAiResponseUsageParser.Parse(responseText);
+        var llmScores = OpenAiJsonResponseDeserializer.DeserializeStructuredOutput<KeywordAnalysisResponse>(
+            responseText,
+            SchemaName,
+            aiModel,
+            usage,
+            _options.KeywordAnalysisMaxOutputTokens,
+            batchNumber,
+            keywords.Keywords.Count);
+
+        var outputLength = OpenAiResponseParser.ExtractTextOutput(responseText).Length;
+        _logger.LogInformation(
+            "ATS contextual keyword scoring batch succeeded. Model: {Model}. BatchNumber: {BatchNumber}. TotalBatches: {TotalBatches}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. ReturnedKeywordCount: {ReturnedKeywordCount}. InputTokens: {InputTokens}. OutputTokens: {OutputTokens}. TotalTokens: {TotalTokens}. CachedTokens: {CachedTokens}. MaxOutputTokens: {MaxOutputTokens}.",
+            aiModel,
+            batchNumber,
+            totalBatches,
+            stopwatch.ElapsedMilliseconds,
+            responseText.Length,
+            outputLength,
+            llmScores.KeywordScores.Count,
+            usage.InputTokens,
+            usage.OutputTokens,
+            usage.TotalTokens,
+            usage.CachedTokens,
+            _options.KeywordAnalysisMaxOutputTokens);
+
+        return llmScores;
+    }
+
+    private int GetBatchSize()
+    {
+        return Math.Max(1, _options.KeywordAnalysisBatchSize);
     }
 
     private static string BuildPrompt(
         KeywordExtractionResponse keywords,
-        string resumeText)
+        string resumeText,
+        int batchNumber,
+        int totalBatches)
     {
         var keywordPayload = new
         {
@@ -157,7 +262,9 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
         var keywordsJson = JsonSerializer.Serialize(keywordPayload);
 
         return $$"""
-You are an ATS and resume expert. For each keyword provided, scan the entire resume and determine how it is used contextually.
+You are an ATS and resume expert. For each keyword provided in this batch, scan the entire resume and determine how it is used contextually.
+
+Batch: {{batchNumber}} of {{totalBatches}}.
 
 For each keyword, identify all places where it appears and aggregate the context across the entire resume.
 Check both the keyword and its variations.
@@ -171,7 +278,7 @@ Context type definitions:
 - in_summary_section: true if the keyword appears in Summary, Professional Summary, Career Summary, Profile, or Objective.
 
 Evidence rules:
-- For each keyword that is present, return up to 3 evidence snippets.
+- For each keyword that is present, return at most 1 evidence snippet.
 - Each evidence snippet must include section, text, and matched_term.
 - If the keyword is not present, evidence must be an empty array.
 - Do not invent evidence. Use only resume text.

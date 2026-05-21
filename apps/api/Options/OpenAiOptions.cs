@@ -12,7 +12,8 @@ public class OpenAiOptions
     public int JobListingsTimeoutSeconds { get; set; } = 180;
     public int ResumeReviewMaxOutputTokens { get; set; } = 3000;
     public int KeywordExtractionMaxOutputTokens { get; set; } = 2500;
-    public int KeywordAnalysisMaxOutputTokens { get; set; } = 4000;
+    public int KeywordAnalysisMaxOutputTokens { get; set; } = 8000;
+    public int KeywordAnalysisBatchSize { get; set; } = 10;
     public int MaxRetries { get; set; } = 2;
     public int RetryBaseDelayMilliseconds { get; set; } = 500;
     public int CircuitBreakerFailureThreshold { get; set; } = 5;

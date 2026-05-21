@@ -131,12 +131,15 @@ export default function Page() {
             aiModel,
             hasJobDescription: Boolean(jobDescription.trim()),
             keywordCount: result.keywordExtraction?.keywords.length ?? 0,
-            scoredKeywordCount: result.keywordScoring?.keyword_scores.length ?? 0,
+            scoredKeywordCount:
+              result.keywordScoring?.keyword_scores.length ?? 0,
           });
         })
         .catch((error) => {
           setAtsEngineError(
-            error instanceof Error ? error.message : "ATS Engine assessment failed.",
+            error instanceof Error
+              ? error.message
+              : "ATS Engine assessment failed.",
           );
           clientLogger.error("ats_engine_failed", error, {
             aiModel,
@@ -245,13 +248,9 @@ export default function Page() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className=" w-full md:max-w-7xl ">
-        {/* <div className="sticky top-0 z-50 bg-background">
-        <ResumeHeader />
-      </div> */}
-
+      <div className=" w-full container mx-auto  md:px-36 px-4">
         {!reportData && !isSubmitting ? (
-          <div className="flex flex-col gap-4 justify-center px-8 py-12 md:px-32 ">
+          <div className="flex flex-col gap-4 justify-center px-4  ">
             <HomeHeader />
 
             <ModelGrid />

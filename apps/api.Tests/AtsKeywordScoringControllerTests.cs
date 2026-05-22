@@ -2,11 +2,16 @@ using Microsoft.AspNetCore.Mvc;
 using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
-using ResumeReview.Api.Services.AtsEngine;
+using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.FinalAssessment;
+using ResumeReview.Api.Services.AtsService.HeaderValidation;
+using ResumeReview.Api.Services.AtsService.KeywordExtraction;
+using ResumeReview.Api.Services.AtsService.KeywordScoring;
+using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class AtsKeywordScoringControllerTests
+public class KeywordValidatorControllerTests
 {
     [Fact]
     public void ScoreKeywords_RejectsMissingBody()
@@ -71,9 +76,9 @@ public class AtsKeywordScoringControllerTests
         Assert.Equal(29, score.KeywordScore);
     }
 
-    private static AtsKeywordScoringController CreateController()
+    private static KeywordValidatorController CreateController()
     {
-        return new AtsKeywordScoringController(new KeywordScoringService());
+        return new KeywordValidatorController(new KeywordScoringService());
     }
 
     private static KeywordScoringRequest CreateRequest(params ContextualKeywordScoreResponse[] keywords)

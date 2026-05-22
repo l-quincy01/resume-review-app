@@ -5,11 +5,16 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsEngine;
+using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.FinalAssessment;
+using ResumeReview.Api.Services.AtsService.HeaderValidation;
+using ResumeReview.Api.Services.AtsService.KeywordExtraction;
+using ResumeReview.Api.Services.AtsService.KeywordScoring;
+using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class AtsContextualKeywordScoringControllerTests
+public class ContextualKeywordScoringControllerTests
 {
     [Fact]
     public async Task ScoreKeywords_RejectsMissingResume()
@@ -139,7 +144,7 @@ public class AtsContextualKeywordScoringControllerTests
     {
         const string resumeText = "SENSITIVE_RESUME_TEXT";
         var keywordsJson = CreateKeywordsJson("SENSITIVE_KEYWORD");
-        var logger = new ListLogger<AtsContextualKeywordScoringController>();
+        var logger = new ListLogger<ContextualKeywordScoringController>();
         var controller = CreateController(
             extractor: new StubResumeTextExtractor(resumeText),
             service: new StubContextualKeywordScoringService { ThrowOnCall = true },
@@ -154,22 +159,22 @@ public class AtsContextualKeywordScoringControllerTests
         Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains("SENSITIVE_KEYWORD"));
     }
 
-    private static AtsContextualKeywordScoringController CreateController(
+    private static ContextualKeywordScoringController CreateController(
         OpenAiOptions? options = null,
         IResumeTextExtractor? extractor = null,
         IContextualKeywordScoringService? service = null,
-        ILogger<AtsContextualKeywordScoringController>? logger = null)
+        ILogger<ContextualKeywordScoringController>? logger = null)
     {
         options ??= new OpenAiOptions
         {
             MaxResumeBytes = 1024
         };
 
-        return new AtsContextualKeywordScoringController(
+        return new ContextualKeywordScoringController(
             extractor ?? new StubResumeTextExtractor(""),
             service ?? new StubContextualKeywordScoringService(),
             Microsoft.Extensions.Options.Options.Create(options),
-            logger ?? new ListLogger<AtsContextualKeywordScoringController>());
+            logger ?? new ListLogger<ContextualKeywordScoringController>());
     }
 
     private static ContextualKeywordScoringRequest CreateRequest(

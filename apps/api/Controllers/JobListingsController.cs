@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ResumeReview.Api.Models;
-using ResumeReview.Api.Services.Ai;
+using ResumeReview.Api.Services.JobSearchService.Listings;
 
 namespace ResumeReview.Api.Controllers;
 

@@ -4,11 +4,16 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsEngine;
+using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.FinalAssessment;
+using ResumeReview.Api.Services.AtsService.HeaderValidation;
+using ResumeReview.Api.Services.AtsService.KeywordExtraction;
+using ResumeReview.Api.Services.AtsService.KeywordScoring;
+using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class AtsKeywordExtractionControllerTests
+public class KeywordExtractionControllerTests
 {
     [Fact]
     public async Task ExtractKeywords_RejectsMissingBody()
@@ -140,7 +145,7 @@ public class AtsKeywordExtractionControllerTests
     public async Task ExtractKeywords_ServiceFailureReturnsBadGatewayWithoutLoggingRawJobDescription()
     {
         const string rawJobDescription = "SENSITIVE_JOB_DESCRIPTION";
-        var logger = new ListLogger<AtsKeywordExtractionController>();
+        var logger = new ListLogger<KeywordExtractionController>();
         var controller = CreateController(
             service: new StubKeywordExtractionService { ThrowOnCall = true },
             logger: logger);
@@ -158,10 +163,10 @@ public class AtsKeywordExtractionControllerTests
         Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains(rawJobDescription));
     }
 
-    private static AtsKeywordExtractionController CreateController(
+    private static KeywordExtractionController CreateController(
         OpenAiOptions? options = null,
         IKeywordExtractionService? service = null,
-        ILogger<AtsKeywordExtractionController>? logger = null)
+        ILogger<KeywordExtractionController>? logger = null)
     {
         options ??= new OpenAiOptions
         {
@@ -169,10 +174,10 @@ public class AtsKeywordExtractionControllerTests
             AllowedModels = ["gpt-4.1-mini"]
         };
 
-        return new AtsKeywordExtractionController(
+        return new KeywordExtractionController(
             service ?? new StubKeywordExtractionService(),
             Microsoft.Extensions.Options.Options.Create(options),
-            logger ?? new ListLogger<AtsKeywordExtractionController>());
+            logger ?? new ListLogger<KeywordExtractionController>());
     }
 
     private sealed class StubKeywordExtractionService : IKeywordExtractionService

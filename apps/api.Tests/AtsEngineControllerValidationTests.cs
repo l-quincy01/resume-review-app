@@ -5,11 +5,16 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsEngine;
+using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.FinalAssessment;
+using ResumeReview.Api.Services.AtsService.HeaderValidation;
+using ResumeReview.Api.Services.AtsService.KeywordExtraction;
+using ResumeReview.Api.Services.AtsService.KeywordScoring;
+using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class AtsEngineControllerValidationTests
+public class HeaderValidationValidationTests
 {
     [Fact]
     public async Task ValidateHeaders_RejectsMissingResume()
@@ -79,7 +84,7 @@ Education
         Assert.True(extractor.WasCalled);
     }
 
-    private static AtsEngineController CreateController(
+    private static HeaderValidation CreateController(
         OpenAiOptions? options = null,
         IResumeTextExtractor? extractor = null,
         IStandardHeaderValidator? validator = null)
@@ -89,11 +94,11 @@ Education
             MaxResumeBytes = 1024
         };
 
-        return new AtsEngineController(
+        return new HeaderValidation(
             extractor ?? new StubResumeTextExtractor(""),
             validator ?? new StandardHeaderValidator(),
             Microsoft.Extensions.Options.Options.Create(options),
-            new ListLogger<AtsEngineController>());
+            new ListLogger<HeaderValidation>());
     }
 
     private static IFormFile CreateFile(string fileName, string contentType, int byteCount)

@@ -88,6 +88,12 @@ public sealed class FinalAssessmentCriticalGapResponse
     [JsonPropertyName("keyword")]
     public string Keyword { get; set; } = string.Empty;
 
+    [JsonPropertyName("keyword_type")]
+    public string KeywordType { get; set; } = string.Empty;
+
+    [JsonPropertyName("context")]
+    public string Context { get; set; } = string.Empty;
+
     [JsonPropertyName("tier")]
     public int Tier { get; set; }
 
@@ -103,6 +109,12 @@ public sealed class FinalAssessmentStrengthResponse
     [JsonPropertyName("keyword")]
     public string Keyword { get; set; } = string.Empty;
 
+    [JsonPropertyName("keyword_type")]
+    public string KeywordType { get; set; } = string.Empty;
+
+    [JsonPropertyName("context")]
+    public string Context { get; set; } = string.Empty;
+
     [JsonPropertyName("score")]
     public int Score { get; set; }
 
@@ -117,6 +129,12 @@ public sealed class FinalAssessmentRecommendationResponse
 {
     [JsonPropertyName("keyword")]
     public string Keyword { get; set; } = string.Empty;
+
+    [JsonPropertyName("keyword_type")]
+    public string KeywordType { get; set; } = string.Empty;
+
+    [JsonPropertyName("context")]
+    public string Context { get; set; } = string.Empty;
 
     [JsonPropertyName("priority")]
     public string Priority { get; set; } = string.Empty;

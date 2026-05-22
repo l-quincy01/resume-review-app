@@ -1,20 +1,18 @@
 using ResumeReview.Api.Dtos.Responses;
 
-namespace ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+namespace ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 
-public sealed class ContextualKeywordScoreMerger
+public sealed class KeywordAnalysisMerger
 {
     private const int MaxEvidenceSnippets = 3;
 
-    public ContextualKeywordScoringResponse Merge(
-        KeywordExtractionResponse stageBKeywords,
-        ContextualKeywordScoringResponse llmResponse)
+    public KeywordAnalysisResponse Merge(KeywordExtractionResponse stageBKeywords, KeywordAnalysisResponse llmResponse)
     {
         var llmScores = llmResponse.KeywordScores
             .GroupBy(score => score.Keyword, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-        return new ContextualKeywordScoringResponse
+        return new KeywordAnalysisResponse
         {
             KeywordScores = stageBKeywords.Keywords
                 .Select(keyword =>
@@ -29,11 +27,11 @@ public sealed class ContextualKeywordScoreMerger
         };
     }
 
-    private static ContextualKeywordScoreResponse InjectMetadata(
+    private static KeywordAnalysisItemResponse InjectMetadata(
         KeywordExtractionItemResponse keyword,
-        ContextualKeywordScoreResponse score)
+        KeywordAnalysisItemResponse score)
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisItemResponse
         {
             Keyword = keyword.Keyword,
             Present = score.Present,
@@ -49,9 +47,9 @@ public sealed class ContextualKeywordScoreMerger
         };
     }
 
-    private static ContextualKeywordScoreResponse CreateMissingScore(string keyword)
+    private static KeywordAnalysisItemResponse CreateMissingScore(string keyword)
     {
-        return new ContextualKeywordScoreResponse
+        return new KeywordAnalysisItemResponse
         {
             Keyword = keyword,
             Present = false,

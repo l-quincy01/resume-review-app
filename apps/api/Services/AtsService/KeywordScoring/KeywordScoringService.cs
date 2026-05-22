@@ -12,7 +12,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         [3] = new ContextPointTable(10, 10, 4, 6, 5, 5)
     };
 
-    public KeywordScoringResponse Score(ContextualKeywordScoringResponse contextualKeywords)
+    public KeywordScoringResponse Score(KeywordAnalysisResponse contextualKeywords)
     {
         return new KeywordScoringResponse
         {
@@ -22,7 +22,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         };
     }
 
-    private static ScoredKeywordResponse ScoreKeyword(ContextualKeywordScoreResponse keyword)
+    private static KeywordScoreObject ScoreKeyword(KeywordAnalysisItemResponse keyword)
     {
         var multiplier = GetRequirementMultiplier(keyword.Requirement);
         var contextPoints = GetContextPoints(keyword);
@@ -34,7 +34,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
             keywordScore = 0;
         }
 
-        return new ScoredKeywordResponse
+        return new KeywordScoreObject
         {
             Keyword = keyword.Keyword,
             Present = keyword.Present,
@@ -53,7 +53,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         };
     }
 
-    private static int GetContextPoints(ContextualKeywordScoreResponse keyword)
+    private static int GetContextPoints(KeywordAnalysisItemResponse keyword)
     {
         if (!keyword.Present)
         {

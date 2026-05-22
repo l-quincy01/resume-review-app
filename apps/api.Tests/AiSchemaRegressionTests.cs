@@ -100,6 +100,9 @@ public class AiSchemaRegressionTests
             Assert.Contains(field, required);
             Assert.True(keywordItem.GetProperty("properties").TryGetProperty(field, out _));
         }
+
+        Assert.DoesNotContain("context", required);
+        Assert.False(keywordItem.GetProperty("properties").TryGetProperty("context", out _));
     }
 
     public static IEnumerable<object[]> Schemas()

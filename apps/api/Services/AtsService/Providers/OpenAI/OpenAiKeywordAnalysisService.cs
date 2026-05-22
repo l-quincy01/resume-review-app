@@ -4,28 +4,28 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.Schemas;
 using ResumeReview.Api.Services.Providers.OpenAI;
 
 namespace ResumeReview.Api.Services.AtsService.Providers.OpenAI;
 
-public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordScoringService
+public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
 {
     private const string SchemaName = "ats_contextual_keyword_scoring";
 
     private readonly HttpClient _httpClient;
     private readonly OpenAiOptions _options;
     private readonly OpenAiRetryPolicy _retryPolicy;
-    private readonly ContextualKeywordScoreMerger _merger;
-    private readonly ILogger<OpenAiContextualKeywordScoringService> _logger;
+    private readonly KeywordAnalysisMerger _merger;
+    private readonly ILogger<OpenAiKeywordAnalysisService> _logger;
 
-    public OpenAiContextualKeywordScoringService(
+    public OpenAiKeywordAnalysisService(
         HttpClient httpClient,
         IOptions<OpenAiOptions> options,
         OpenAiRetryPolicy retryPolicy,
-        ContextualKeywordScoreMerger merger,
-        ILogger<OpenAiContextualKeywordScoringService> logger)
+        KeywordAnalysisMerger merger,
+        ILogger<OpenAiKeywordAnalysisService> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;
@@ -38,7 +38,7 @@ public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordSc
             new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
-    public async Task<ContextualKeywordScoringResponse> ScoreKeywordsAsync(
+    public async Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
         string aiModel,
         KeywordExtractionResponse keywords,
         string resumeText,
@@ -103,7 +103,7 @@ public sealed class OpenAiContextualKeywordScoringService : IContextualKeywordSc
             }
 
             var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
-            var llmScores = JsonSerializer.Deserialize<ContextualKeywordScoringResponse>(
+            var llmScores = JsonSerializer.Deserialize<KeywordAnalysisResponse>(
                 modelJson,
                 new JsonSerializerOptions
                 {
@@ -157,6 +157,9 @@ Evidence rules:
 - Each evidence snippet must include section, text, and matched_term.
 - If the keyword is not present, evidence must be an empty array.
 - Do not invent evidence. Use only resume text.
+
+Output rules:
+- Do not return a context field. The original job-description context is already supplied in JD Keywords and will be copied into the final response by the API.
 
 Return ONLY valid JSON with NO additional text or markdown.
 

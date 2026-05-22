@@ -42,7 +42,7 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
         };
     }
 
-    private static FinalAssessmentCoverageResponse BuildCoverage(List<ScoredKeywordResponse> keywords)
+    private static FinalAssessmentCoverageResponse BuildCoverage(List<KeywordScoreObject> keywords)
     {
         var total = keywords.Count;
         var present = keywords.Count(keyword => keyword.Present);
@@ -62,7 +62,7 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
     }
 
     private static FinalAssessmentTierBreakdownItemResponse BuildTierBreakdown(
-        List<ScoredKeywordResponse> keywords,
+        List<KeywordScoreObject> keywords,
         int tier)
     {
         var tierKeywords = keywords.Where(keyword => keyword.Tier == tier).ToList();
@@ -100,13 +100,15 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
         return ClampScore(Round(weightedScore));
     }
 
-    private static List<FinalAssessmentCriticalGapResponse> BuildCriticalGaps(List<ScoredKeywordResponse> keywords)
+    private static List<FinalAssessmentCriticalGapResponse> BuildCriticalGaps(List<KeywordScoreObject> keywords)
     {
         return keywords
             .Where(keyword => !keyword.Present && IsMustHave(keyword) && keyword.Tier is 0 or 1)
             .Select(keyword => new FinalAssessmentCriticalGapResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Tier = keyword.Tier,
                 Requirement = keyword.Requirement,
                 Reason = "Missing entirely from the resume despite being a critical must-have requirement."
@@ -114,13 +116,15 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .ToList();
     }
 
-    private static List<FinalAssessmentStrengthResponse> BuildStrengths(List<ScoredKeywordResponse> keywords)
+    private static List<FinalAssessmentStrengthResponse> BuildStrengths(List<KeywordScoreObject> keywords)
     {
         return keywords
             .Where(keyword => keyword.Present && keyword.KeywordScore >= 80)
             .Select(keyword => new FinalAssessmentStrengthResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Score = keyword.KeywordScore,
                 Reason = BuildStrengthReason(keyword),
                 Evidence = keyword.Evidence.Take(3).ToList()
@@ -128,13 +132,15 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .ToList();
     }
 
-    private static List<FinalAssessmentRecommendationResponse> BuildRecommendations(List<ScoredKeywordResponse> keywords)
+    private static List<FinalAssessmentRecommendationResponse> BuildRecommendations(List<KeywordScoreObject> keywords)
     {
         return keywords
             .Where(keyword => !keyword.Present && IsMustHave(keyword) && keyword.Tier is 0 or 1 or 2)
             .Select(keyword => new FinalAssessmentRecommendationResponse
             {
                 Keyword = keyword.Keyword,
+                KeywordType = keyword.KeywordType,
+                Context = keyword.Context,
                 Priority = keyword.Tier is 0 or 1 ? "High" : "Medium",
                 Issue = keyword.Tier is 0 or 1
                     ? "Missing critical must-have keyword."
@@ -146,7 +152,7 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
             .ToList();
     }
 
-    private static string BuildStrengthReason(ScoredKeywordResponse keyword)
+    private static string BuildStrengthReason(KeywordScoreObject keyword)
     {
         var context = keyword.ContextType ?? new KeywordContextTypeResponse();
 
@@ -168,12 +174,12 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
         return "Well contextualised in the resume with supporting evidence.";
     }
 
-    private static bool IsMustHave(ScoredKeywordResponse keyword)
+    private static bool IsMustHave(KeywordScoreObject keyword)
     {
         return string.Equals(keyword.Requirement, "must_have", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static int EffectiveKeywordScore(ScoredKeywordResponse keyword)
+    private static int EffectiveKeywordScore(KeywordScoreObject keyword)
     {
         return keyword.Present ? keyword.KeywordScore : 0;
     }

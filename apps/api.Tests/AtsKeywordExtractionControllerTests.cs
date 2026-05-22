@@ -4,7 +4,7 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;

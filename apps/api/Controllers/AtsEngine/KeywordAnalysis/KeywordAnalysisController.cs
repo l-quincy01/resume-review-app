@@ -4,44 +4,39 @@ using Microsoft.Extensions.Options;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
-using ResumeReview.Api.Services.AtsService.FinalAssessment;
-using ResumeReview.Api.Services.AtsService.HeaderValidation;
-using ResumeReview.Api.Services.AtsService.KeywordExtraction;
-using ResumeReview.Api.Services.AtsService.KeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Controllers;
 
 [ApiController]
 [Route("api/ats-engine")]
-
-public sealed class ContextualKeywordScoringController : ControllerBase
+public sealed class KeywordAnalysisController : ControllerBase
 {
     private readonly IResumeTextExtractor _resumeTextExtractor;
-    private readonly IContextualKeywordScoringService _contextualKeywordScoringService;
+    private readonly IKeywordAnalysisService _keywordAnalysisService;
     private readonly OpenAiOptions _openAiOptions;
-    private readonly ILogger<ContextualKeywordScoringController> _logger;
+    private readonly ILogger<KeywordAnalysisController> _logger;
 
-    public ContextualKeywordScoringController(
+    public KeywordAnalysisController(
         IResumeTextExtractor resumeTextExtractor,
-        IContextualKeywordScoringService contextualKeywordScoringService,
+        IKeywordAnalysisService keywordAnalysisService,
         IOptions<OpenAiOptions> openAiOptions,
-        ILogger<ContextualKeywordScoringController> logger)
+        ILogger<KeywordAnalysisController> logger)
     {
         _resumeTextExtractor = resumeTextExtractor;
-        _contextualKeywordScoringService = contextualKeywordScoringService;
+        _keywordAnalysisService = keywordAnalysisService;
         _openAiOptions = openAiOptions.Value;
         _logger = logger;
     }
 
-    [HttpPost("contextual-keyword-scoring")]
+    [HttpPost("keyword-analysis")]
     [Consumes("multipart/form-data")]
-    [ProducesResponseType(typeof(ContextualKeywordScoringResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(KeywordAnalysisResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> ScoreKeywords(
-        [FromForm] ContextualKeywordScoringRequest request,
+        [FromForm] KeywordAnalysisRequest request,
         CancellationToken cancellationToken)
     {
         if (request.Resume == null || request.Resume.Length == 0)
@@ -97,7 +92,7 @@ public sealed class ContextualKeywordScoringController : ControllerBase
 
         try
         {
-            var response = await _contextualKeywordScoringService.ScoreKeywordsAsync(
+            var response = await _keywordAnalysisService.ScoreKeywordsAsync(
                 request.AiModel,
                 keywords,
                 resumeText,
@@ -113,14 +108,14 @@ public sealed class ContextualKeywordScoringController : ControllerBase
         {
             _logger.LogError(
                 ex,
-                "ATS contextual keyword scoring endpoint failed. Model: {Model}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}.",
+                "ATS keyword analysis endpoint failed. Model: {Model}. KeywordCount: {KeywordCount}. ResumeTextLength: {ResumeTextLength}.",
                 request.AiModel,
                 keywords.Keywords.Count,
                 resumeText.Length);
 
             return StatusCode(
                 StatusCodes.Status502BadGateway,
-                new { message = "Contextual keyword scoring failed." });
+                new { message = "Keyword analysis failed." });
         }
     }
 

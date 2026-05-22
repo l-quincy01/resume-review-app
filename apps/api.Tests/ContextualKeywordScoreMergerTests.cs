@@ -1,5 +1,5 @@
 using ResumeReview.Api.Dtos.Responses;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -8,20 +8,21 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class ContextualKeywordScoreMergerTests
+public class KeywordAnalysisMergerTests
 {
     [Fact]
     public void Merge_InjectsStageBMetadataIntoLlmResults()
     {
         var stageB = CreateStageB();
-        var llm = new ContextualKeywordScoringResponse
+        var llm = new KeywordAnalysisResponse
         {
             KeywordScores =
             [
-                new ContextualKeywordScoreResponse
+                new KeywordAnalysisItemResponse
                 {
                     Keyword = "React",
                     Present = true,
+                    Context = "LLM context should not be used.",
                     MatchedTerms = ["React"],
                     ContextType = new KeywordContextTypeResponse
                     {
@@ -60,7 +61,7 @@ public class ContextualKeywordScoreMergerTests
     [Fact]
     public void Merge_FillsMissingLlmKeywordsAsNotPresent()
     {
-        var result = CreateMerger().Merge(CreateStageB(), new ContextualKeywordScoringResponse());
+        var result = CreateMerger().Merge(CreateStageB(), new KeywordAnalysisResponse());
         var score = Assert.Single(result.KeywordScores);
 
         Assert.Equal("React", score.Keyword);
@@ -79,11 +80,11 @@ public class ContextualKeywordScoreMergerTests
     public void Merge_CapsEvidenceAtThreeSnippets()
     {
         var stageB = CreateStageB();
-        var llm = new ContextualKeywordScoringResponse
+        var llm = new KeywordAnalysisResponse
         {
             KeywordScores =
             [
-                new ContextualKeywordScoreResponse
+                new KeywordAnalysisItemResponse
                 {
                     Keyword = "React",
                     Present = true,
@@ -107,9 +108,9 @@ public class ContextualKeywordScoreMergerTests
         Assert.Equal("three", score.Evidence[2].Text);
     }
 
-    private static ContextualKeywordScoreMerger CreateMerger()
+    private static KeywordAnalysisMerger CreateMerger()
     {
-        return new ContextualKeywordScoreMerger();
+        return new KeywordAnalysisMerger();
     }
 
     private static KeywordExtractionResponse CreateStageB()

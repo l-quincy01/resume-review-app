@@ -5,7 +5,7 @@ using ResumeReview.Api.Controllers;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Options;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
+using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.FinalAssessment;
 using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
@@ -14,13 +14,13 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Tests;
 
-public class ContextualKeywordScoringControllerTests
+public class KeywordAnalysisControllerTests
 {
     [Fact]
     public async Task ScoreKeywords_RejectsMissingResume()
     {
         var controller = CreateController();
-        var request = new ContextualKeywordScoringRequest
+        var request = new KeywordAnalysisRequest
         {
             KeywordsJson = CreateKeywordsJson(),
             AiModel = "gpt-4.1-mini"
@@ -113,11 +113,11 @@ public class ContextualKeywordScoringControllerTests
         var extractor = new StubResumeTextExtractor("Built React dashboards.");
         var service = new StubContextualKeywordScoringService
         {
-            Response = new ContextualKeywordScoringResponse
+            Response = new KeywordAnalysisResponse
             {
                 KeywordScores =
                 [
-                    new ContextualKeywordScoreResponse
+                    new KeywordAnalysisItemResponse
                     {
                         Keyword = "React",
                         Present = true
@@ -131,7 +131,7 @@ public class ContextualKeywordScoringControllerTests
         var result = await controller.ScoreKeywords(request, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<ContextualKeywordScoringResponse>(ok.Value);
+        var response = Assert.IsType<KeywordAnalysisResponse>(ok.Value);
         Assert.True(response.KeywordScores.Single().Present);
         Assert.True(extractor.WasCalled);
         Assert.Equal("gpt-4.1-mini", service.LastModel);
@@ -144,7 +144,7 @@ public class ContextualKeywordScoringControllerTests
     {
         const string resumeText = "SENSITIVE_RESUME_TEXT";
         var keywordsJson = CreateKeywordsJson("SENSITIVE_KEYWORD");
-        var logger = new ListLogger<ContextualKeywordScoringController>();
+        var logger = new ListLogger<KeywordAnalysisController>();
         var controller = CreateController(
             extractor: new StubResumeTextExtractor(resumeText),
             service: new StubContextualKeywordScoringService { ThrowOnCall = true },
@@ -159,30 +159,30 @@ public class ContextualKeywordScoringControllerTests
         Assert.DoesNotContain(logger.Entries, entry => entry.Message.Contains("SENSITIVE_KEYWORD"));
     }
 
-    private static ContextualKeywordScoringController CreateController(
+    private static KeywordAnalysisController CreateController(
         OpenAiOptions? options = null,
         IResumeTextExtractor? extractor = null,
-        IContextualKeywordScoringService? service = null,
-        ILogger<ContextualKeywordScoringController>? logger = null)
+        IKeywordAnalysisService? service = null,
+        ILogger<KeywordAnalysisController>? logger = null)
     {
         options ??= new OpenAiOptions
         {
             MaxResumeBytes = 1024
         };
 
-        return new ContextualKeywordScoringController(
+        return new KeywordAnalysisController(
             extractor ?? new StubResumeTextExtractor(""),
             service ?? new StubContextualKeywordScoringService(),
             Microsoft.Extensions.Options.Options.Create(options),
-            logger ?? new ListLogger<ContextualKeywordScoringController>());
+            logger ?? new ListLogger<KeywordAnalysisController>());
     }
 
-    private static ContextualKeywordScoringRequest CreateRequest(
+    private static KeywordAnalysisRequest CreateRequest(
         IFormFile? resume = null,
         string? keywordsJson = null,
         string aiModel = "gpt-4.1-mini")
     {
-        return new ContextualKeywordScoringRequest
+        return new KeywordAnalysisRequest
         {
             Resume = resume ?? CreateFile("resume.pdf", "application/pdf", 32),
             KeywordsJson = keywordsJson ?? CreateKeywordsJson(),
@@ -244,15 +244,15 @@ public class ContextualKeywordScoringControllerTests
         }
     }
 
-    private sealed class StubContextualKeywordScoringService : IContextualKeywordScoringService
+    private sealed class StubContextualKeywordScoringService : IKeywordAnalysisService
     {
-        public ContextualKeywordScoringResponse Response { get; set; } = new();
+        public KeywordAnalysisResponse Response { get; set; } = new();
         public bool ThrowOnCall { get; set; }
         public string? LastModel { get; private set; }
         public KeywordExtractionResponse? LastKeywords { get; private set; }
         public string? LastResumeText { get; private set; }
 
-        public Task<ContextualKeywordScoringResponse> ScoreKeywordsAsync(
+        public Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
             string aiModel,
             KeywordExtractionResponse keywords,
             string resumeText,

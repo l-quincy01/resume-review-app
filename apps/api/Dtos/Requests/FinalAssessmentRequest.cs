@@ -12,5 +12,5 @@ public sealed class FinalAssessmentRequest
     public int HeaderQualityScore { get; set; }
 
     [JsonPropertyName("keyword_scores")]
-    public List<ScoredKeywordResponse> KeywordScores { get; set; } = [];
+    public List<KeywordScoreObject> KeywordScores { get; set; } = [];
 }

@@ -1,23 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
-using ResumeReview.Api.Services.AtsService.ContextualKeywordScoring;
-using ResumeReview.Api.Services.AtsService.FinalAssessment;
-using ResumeReview.Api.Services.AtsService.HeaderValidation;
-using ResumeReview.Api.Services.AtsService.KeywordExtraction;
 using ResumeReview.Api.Services.AtsService.KeywordScoring;
-using ResumeReview.Api.Services.AtsService.TextExtraction;
 
 namespace ResumeReview.Api.Controllers;
 
-
 [ApiController]
 [Route("api/ats-engine")]
-public sealed class KeywordValidatorController : ControllerBase
+public sealed class KeywordScoringController : ControllerBase
 {
     private readonly IKeywordScoringService _keywordScoringService;
 
-    public KeywordValidatorController(IKeywordScoringService keywordScoringService)
+    public KeywordScoringController(IKeywordScoringService keywordScoringService)
     {
         _keywordScoringService = keywordScoringService;
     }
@@ -50,7 +44,7 @@ public sealed class KeywordValidatorController : ControllerBase
             }
         }
 
-        return Ok(_keywordScoringService.Score(new ContextualKeywordScoringResponse
+        return Ok(_keywordScoringService.Score(new KeywordAnalysisResponse
         {
             KeywordScores = request.KeywordScores
         }));

@@ -2,13 +2,14 @@ using System.Text.Json.Serialization;
 
 namespace ResumeReview.Api.Dtos.Responses;
 
-public sealed class ContextualKeywordScoringResponse
+public sealed class KeywordScoringResponse
 {
     [JsonPropertyName("keyword_scores")]
-    public List<ContextualKeywordScoreResponse> KeywordScores { get; set; } = [];
+    public List<KeywordScoreObject> KeywordScores { get; set; } = [];
 }
 
-public sealed class ContextualKeywordScoreResponse
+
+public sealed class KeywordScoreObject
 {
     [JsonPropertyName("keyword")]
     public string Keyword { get; set; } = string.Empty;
@@ -42,37 +43,13 @@ public sealed class ContextualKeywordScoreResponse
 
     [JsonPropertyName("evidence")]
     public List<KeywordEvidenceResponse> Evidence { get; set; } = [];
-}
 
-public sealed class KeywordContextTypeResponse
-{
-    [JsonPropertyName("has_achievement")]
-    public bool HasAchievement { get; set; }
+    [JsonPropertyName("requirement_multiplier")]
+    public decimal RequirementMultiplier { get; set; }
 
-    [JsonPropertyName("has_metric")]
-    public bool HasMetric { get; set; }
+    [JsonPropertyName("context_points")]
+    public int ContextPoints { get; set; }
 
-    [JsonPropertyName("has_action_verb")]
-    public bool HasActionVerb { get; set; }
-
-    [JsonPropertyName("in_experience_section")]
-    public bool InExperienceSection { get; set; }
-
-    [JsonPropertyName("in_project_section")]
-    public bool InProjectSection { get; set; }
-
-    [JsonPropertyName("in_summary_section")]
-    public bool InSummarySection { get; set; }
-}
-
-public sealed class KeywordEvidenceResponse
-{
-    [JsonPropertyName("section")]
-    public string Section { get; set; } = string.Empty;
-
-    [JsonPropertyName("text")]
-    public string Text { get; set; } = string.Empty;
-
-    [JsonPropertyName("matched_term")]
-    public string MatchedTerm { get; set; } = string.Empty;
+    [JsonPropertyName("keyword_score")]
+    public int KeywordScore { get; set; }
 }

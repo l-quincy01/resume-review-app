@@ -80,6 +80,7 @@ export default function AtsEngineProgressiveHeader({
           title="ATS analysis failed"
           message={error}
           tone="error"
+          testId="ats-engine-error"
         />
       ) : isComplete ? (
         <StatusBanner
@@ -160,10 +161,12 @@ function StatusBanner({
   title,
   message,
   tone,
+  testId,
 }: {
   title: string;
   message: string;
   tone: "success" | "error";
+  testId?: string;
 }) {
   const toneClass =
     tone === "success"
@@ -173,6 +176,7 @@ function StatusBanner({
   return (
     <div
       className={`flex items-start justify-between gap-4 rounded-md border p-4 ${toneClass}`}
+      data-testid={testId}
     >
       <div className="flex flex-col gap-1">
         <div className="font-semibold">{title}</div>

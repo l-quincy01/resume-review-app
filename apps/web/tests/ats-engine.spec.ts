@@ -215,6 +215,9 @@ test.describe("ATS Engine section", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
-    await expect(page.getByText("Header validation failed.")).toBeVisible();
+    await expect(page.getByText("Quantitative ATS Analysis")).toBeVisible();
+    await expect(page.getByTestId("ats-engine-error")).toContainText(
+      "Header validation failed.",
+    );
   });
 });

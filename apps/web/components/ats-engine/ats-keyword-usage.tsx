@@ -1,7 +1,6 @@
 import {
   AtsContextualKeywordScore,
   AtsCriticalGap,
-  AtsTierBreakdown,
 } from "@/types/AtsEngine/ats-engine.type";
 import type React from "react";
 

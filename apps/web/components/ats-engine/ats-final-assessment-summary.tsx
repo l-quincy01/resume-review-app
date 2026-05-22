@@ -6,18 +6,16 @@ import {
   AtsScoredKeyword,
 } from "@/types/AtsEngine/ats-engine.type";
 import AtsCoverageSummary from "./ats-coverage-summary";
-import AtsKeywordResultList from "./ats-keyword-result-list";
-import AtsKeywordTypeAccordion from "./ats-keyword-type-accordion";
+
 import AtsTierBreakdownSummary from "./ats-tier-breakdown-summary";
-import ScoreTile from "./score-tile";
-// import { Accordion } from "@/components/ui/accordion";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import KeywordTypePresenceTile from "./tiles/KeywordTypePresenceTile";
+
 import AtsKeywordUsage from "./ats-keyword-usage";
 import AtsKeywordFeedback from "./ats-keyword-feedback";
 
@@ -32,9 +30,6 @@ export default function AtsFinalAssessmentSummary({
   keywordScores,
   atsEnginePipelineResult,
 }: AtsFinalAssessmentSummaryProps) {
-  const singleWordMetrics = getKeywordTypeMetrics(keywordScores, "single_word");
-  const multiWordMetrics = getKeywordTypeMetrics(keywordScores, "multi_word");
-
   function scoreAggregate(score: number) {
     let finalScore = 0;
 
@@ -56,7 +51,10 @@ export default function AtsFinalAssessmentSummary({
   }
 
   return (
-    <div className="flex flex-col gap-4 border-t">
+    <div
+      className="flex flex-col gap-4 border-t"
+      data-testid="ats-final-assessment-summary"
+    >
       <Accordion
         type="multiple"
         defaultValue={["default"]}
@@ -122,27 +120,4 @@ export default function AtsFinalAssessmentSummary({
       </Accordion>
     </div>
   );
-}
-
-interface KeywordTypeMetrics {
-  present: number;
-  total: number;
-  presenceRate: number;
-}
-
-function getKeywordTypeMetrics(
-  keywordScores: AtsScoredKeyword[],
-  keywordType: "single_word" | "multi_word",
-): KeywordTypeMetrics {
-  const matchingKeywords = keywordScores.filter(
-    (keyword) => keyword.keyword_type === keywordType,
-  );
-  const present = matchingKeywords.filter((keyword) => keyword.present).length;
-  const total = matchingKeywords.length;
-
-  return {
-    present,
-    total,
-    presenceRate: total === 0 ? 0 : Math.round((present / total) * 100),
-  };
 }

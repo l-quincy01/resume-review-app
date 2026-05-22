@@ -31,7 +31,7 @@ export default function AtsHeaderValidationSummary({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-testid="ats-header-validation-summary">
       <Accordion
         type="multiple"
         defaultValue={["default"]}

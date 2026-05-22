@@ -39,7 +39,7 @@ public static class OpenAiResponsesRequestFactory
 
         if (SupportsReasoning(model))
         {
-            request["reasoning"] = new { effort = "minimal" };
+            request["reasoning"] = new { effort = ResolveReasoningEffort(model) };
         }
 
         if (!string.IsNullOrWhiteSpace(promptCacheKey))
@@ -63,6 +63,14 @@ public static class OpenAiResponsesRequestFactory
     public static bool SupportsReasoning(string model)
     {
         return IsGpt5Model(model);
+    }
+
+    public static string ResolveReasoningEffort(string model)
+    {
+        return model.Equals("gpt-5-mini", StringComparison.OrdinalIgnoreCase) ||
+               model.Equals("gpt-5-nano", StringComparison.OrdinalIgnoreCase)
+            ? "minimal"
+            : "low";
     }
 
     private static bool IsGpt5Model(string model)

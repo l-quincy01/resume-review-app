@@ -19,7 +19,7 @@ public class KeywordScoringServiceTests
             contextType: AllFlags())));
         var score = Assert.Single(result.KeywordScores);
 
-        Assert.Equal(99, score.ContextPoints);
+        Assert.Equal(124, score.ContextPoints);
         Assert.Equal(1.15m, score.RequirementMultiplier);
         Assert.Equal(100, score.KeywordScore);
     }
@@ -32,12 +32,12 @@ public class KeywordScoringServiceTests
             CreateKeyword(tier: 2, requirement: "", contextType: new KeywordContextTypeResponse { HasMetric = true }),
             CreateKeyword(tier: 3, requirement: "", contextType: new KeywordContextTypeResponse { InProjectSection = true })));
 
-        Assert.Equal(20, result.KeywordScores[0].ContextPoints);
-        Assert.Equal(20, result.KeywordScores[0].KeywordScore);
-        Assert.Equal(12, result.KeywordScores[1].ContextPoints);
-        Assert.Equal(12, result.KeywordScores[1].KeywordScore);
-        Assert.Equal(5, result.KeywordScores[2].ContextPoints);
-        Assert.Equal(5, result.KeywordScores[2].KeywordScore);
+        Assert.Equal(42, result.KeywordScores[0].ContextPoints);
+        Assert.Equal(42, result.KeywordScores[0].KeywordScore);
+        Assert.Equal(30, result.KeywordScores[1].ContextPoints);
+        Assert.Equal(30, result.KeywordScores[1].KeywordScore);
+        Assert.Equal(20, result.KeywordScores[2].ContextPoints);
+        Assert.Equal(20, result.KeywordScores[2].KeywordScore);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class KeywordScoringServiceTests
         var score = Assert.Single(result.KeywordScores);
 
         Assert.Equal(1.05m, score.RequirementMultiplier);
-        Assert.Equal(16, score.KeywordScore);
+        Assert.Equal(39, score.KeywordScore);
     }
 
     [Fact]
@@ -63,7 +63,26 @@ public class KeywordScoringServiceTests
         var score = Assert.Single(result.KeywordScores);
 
         Assert.Equal(1.0m, score.RequirementMultiplier);
-        Assert.Equal(15, score.KeywordScore);
+        Assert.Equal(37, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_StrongContextWithoutMetricScoresMateriallyHigher()
+    {
+        var result = CreateService().Score(CreateResponse(CreateKeyword(
+            tier: 1,
+            requirement: "must_have",
+            contextType: new KeywordContextTypeResponse
+            {
+                HasAchievement = true,
+                HasActionVerb = true,
+                InExperienceSection = true,
+                InProjectSection = true
+            })));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(70, score.ContextPoints);
+        Assert.Equal(81, score.KeywordScore);
     }
 
     [Fact]
@@ -90,6 +109,37 @@ public class KeywordScoringServiceTests
             contextType: new KeywordContextTypeResponse())));
         var score = Assert.Single(result.KeywordScores);
 
+        Assert.Equal(-12, score.ContextPoints);
+        Assert.Equal(0, score.KeywordScore);
+    }
+
+    [Fact]
+    public void Score_NormalizesNullableKeywordFields()
+    {
+        var result = CreateService().Score(CreateResponse(new KeywordAnalysisItemResponse
+        {
+            Keyword = null!,
+            Present = true,
+            Tier = 1,
+            Requirement = null!,
+            KeywordType = null!,
+            Frequency = 1,
+            Context = null!,
+            Variations = null!,
+            MatchedTerms = null!,
+            ContextType = null!,
+            Evidence = null!
+        }));
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal(string.Empty, score.Keyword);
+        Assert.Equal(string.Empty, score.Requirement);
+        Assert.Equal(string.Empty, score.KeywordType);
+        Assert.Equal(string.Empty, score.Context);
+        Assert.Empty(score.Variations);
+        Assert.Empty(score.MatchedTerms);
+        Assert.NotNull(score.ContextType);
+        Assert.Empty(score.Evidence);
         Assert.Equal(-12, score.ContextPoints);
         Assert.Equal(0, score.KeywordScore);
     }

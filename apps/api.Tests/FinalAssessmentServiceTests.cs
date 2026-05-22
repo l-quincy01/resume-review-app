@@ -62,8 +62,21 @@ public class FinalAssessmentServiceTests
             Keyword("REST APIs", tier: 1, present: true, score: 80),
             Keyword("Testing", tier: 2, present: false, score: 0)));
 
-        Assert.Equal(53, result.OverallKeywordScore);
-        Assert.Equal(64, result.AtsReadinessScore);
+        Assert.Equal(49, result.OverallKeywordScore);
+        Assert.Equal(61, result.AtsReadinessScore);
+    }
+
+    [Fact]
+    public void Assess_UsesUpdatedTierWeightsForOverallKeywordScore()
+    {
+        var result = CreateService().Assess(CreateRequest(
+            headerScore: 0,
+            Keyword("Tier 0", tier: 0, present: true, score: 100),
+            Keyword("Tier 1", tier: 1, present: true, score: 80),
+            Keyword("Tier 2", tier: 2, present: true, score: 60),
+            Keyword("Tier 3", tier: 3, present: true, score: 40)));
+
+        Assert.Equal(77, result.OverallKeywordScore);
     }
 
     [Fact]

@@ -56,5 +56,22 @@ public class OpenAiResponsesRequestFactoryTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(request));
 
         Assert.False(document.RootElement.TryGetProperty("temperature", out _));
+        Assert.Equal("minimal", document.RootElement.GetProperty("reasoning").GetProperty("effort").GetString());
+    }
+
+    [Fact]
+    public void CreateStructuredRequest_UsesLowReasoning_ForGpt54()
+    {
+        var request = OpenAiResponsesRequestFactory.CreateStructuredRequest(
+            "gpt-5.4",
+            [new { role = "user", content = new[] { new { type = "input_text", text = "redacted" } } }],
+            "test_schema",
+            new { type = "object", additionalProperties = false });
+
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(request));
+
+        Assert.False(document.RootElement.TryGetProperty("temperature", out _));
+        Assert.Equal("low", document.RootElement.GetProperty("text").GetProperty("verbosity").GetString());
+        Assert.Equal("low", document.RootElement.GetProperty("reasoning").GetProperty("effort").GetString());
     }
 }

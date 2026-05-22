@@ -7,10 +7,10 @@ public sealed class FinalAssessmentService : IFinalAssessmentService
 {
     private static readonly Dictionary<int, decimal> TierWeights = new()
     {
-        [0] = 0.40m,
-        [1] = 0.35m,
-        [2] = 0.15m,
-        [3] = 0.10m
+        [0] = 0.35m,
+        [1] = 0.30m,
+        [2] = 0.20m,
+        [3] = 0.15m
     };
 
     public FinalAssessmentResponse Assess(FinalAssessmentRequest request)

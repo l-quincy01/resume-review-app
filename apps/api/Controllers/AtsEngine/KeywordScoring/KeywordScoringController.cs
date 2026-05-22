@@ -26,13 +26,25 @@ public sealed class KeywordScoringController : ControllerBase
             return BadRequest(new { message = "Request body is required." });
         }
 
+        if (request.KeywordScores is null)
+        {
+            return BadRequest(new { message = "keyword_scores is required." });
+        }
+
         if (request.KeywordScores.Count == 0)
         {
             return BadRequest(new { message = "keyword_scores must contain at least one keyword." });
         }
 
-        foreach (var keyword in request.KeywordScores)
+        for (var index = 0; index < request.KeywordScores.Count; index++)
         {
+            var keyword = request.KeywordScores[index];
+
+            if (keyword is null)
+            {
+                return BadRequest(new { message = $"keyword_scores[{index}] is required." });
+            }
+
             if (keyword.Tier is < 0 or > 3)
             {
                 return BadRequest(new { message = "Keyword tier must be 0, 1, 2, or 3." });

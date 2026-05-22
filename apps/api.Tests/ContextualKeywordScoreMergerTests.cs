@@ -108,6 +108,48 @@ public class KeywordAnalysisMergerTests
         Assert.Equal("three", score.Evidence[2].Text);
     }
 
+    [Fact]
+    public void Merge_IgnoresInvalidLlmItemsAndNormalizesNullableLists()
+    {
+        var stageB = CreateStageB();
+        stageB.Keywords[0].Variations = null!;
+        var llm = new KeywordAnalysisResponse
+        {
+            KeywordScores =
+            [
+                null!,
+                new KeywordAnalysisItemResponse { Keyword = " " }
+            ]
+        };
+
+        var result = CreateMerger().Merge(stageB, llm);
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal("React", score.Keyword);
+        Assert.False(score.Present);
+        Assert.Empty(score.Variations);
+        Assert.Empty(score.MatchedTerms);
+        Assert.Empty(score.Evidence);
+        Assert.NotNull(score.ContextType);
+    }
+
+    [Fact]
+    public void Merge_NullLlmKeywordScoresFillsMissingStageBKeywords()
+    {
+        var llm = new KeywordAnalysisResponse
+        {
+            KeywordScores = null!
+        };
+
+        var result = CreateMerger().Merge(CreateStageB(), llm);
+        var score = Assert.Single(result.KeywordScores);
+
+        Assert.Equal("React", score.Keyword);
+        Assert.False(score.Present);
+        Assert.Empty(score.MatchedTerms);
+        Assert.Empty(score.Evidence);
+    }
+
     private static KeywordAnalysisMerger CreateMerger()
     {
         return new KeywordAnalysisMerger();

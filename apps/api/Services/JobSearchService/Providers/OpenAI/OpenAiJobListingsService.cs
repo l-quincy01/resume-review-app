@@ -122,7 +122,7 @@ public class OpenAiJobListingsService : IJobListingsService
         {
             requestBody["reasoning"] = new
             {
-                effort = "medium"
+                effort = OpenAiResponsesRequestFactory.ResolveReasoningEffort(_options.JobListingsModel)
             };
         }
 

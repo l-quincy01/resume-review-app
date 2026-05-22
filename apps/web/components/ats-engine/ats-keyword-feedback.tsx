@@ -224,10 +224,9 @@ function FeedbackCard({
 }
 function WeakKeywordCard({
   keyword,
-  meta,
+
   context,
   body,
-  variant,
 }: {
   keyword: string;
   meta: string;
@@ -235,8 +234,6 @@ function WeakKeywordCard({
   body: string;
   variant: "positive" | "negative" | "neutral";
 }) {
-  const pillClassName = getVariantClassName(variant);
-
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3 text-sm w-full">
       <div className="flex flex-row items-center  ">
@@ -250,54 +247,6 @@ function WeakKeywordCard({
         Context:
         <span className="text-muted-foreground"> {context}</span>
       </div>
-    </div>
-  );
-}
-
-/*
-
-        <div>
-          Add these keywords naturally into a relevant section in your resume.
-          Include them with an action verb, metric or achivement. Also use the
-          X-Y-Z formula.
-        </div>
-        {recommendations.map((recommendation, index) => (
-          <div
-            key={index}
-            className="rounded-md border px-2.5 py-1 text-xs font-medium border-muted-foreground/30 bg-muted text-muted-foreground"
-          >
-            {recommendation.keyword}
-          </div>
-        ))}
-*/
-
-function StuffedKeyWordCard({
-  keyword,
-  meta,
-  context,
-  body,
-  variant,
-}: {
-  keyword: string;
-  meta: string;
-  context: string;
-  body: string;
-  variant: "positive" | "negative" | "neutral";
-}) {
-  const pillClassName = getVariantClassName(variant);
-
-  return (
-    <div className="flex flex-col gap-2 rounded-md border p-3 text-sm w-full">
-      <div className="flex items-start justify-between gap-3">
-        <div className="font-medium">{keyword}</div>
-        <span
-          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${pillClassName}`}
-        >
-          {meta}
-        </span>
-      </div>
-      <div className="text-muted-foreground">{context}</div>
-      <div>{body}</div>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import {
   AtsScoredKeyword,
   AtsTierBreakdown,
 } from "@/types/AtsEngine/ats-engine.type";
-import MetricRow from "./metric-row";
 
 interface AtsCoverageSummaryProps {
   coverage: AtsCoverage;
@@ -16,7 +15,6 @@ interface AtsCoverageSummaryProps {
 export default function AtsCoverageSummary({
   coverage,
   tierBreakdown,
-  keywordScores,
 }: AtsCoverageSummaryProps) {
   return (
     <div className="grid gap-2 md:grid-cols-3">

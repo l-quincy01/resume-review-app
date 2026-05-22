@@ -204,6 +204,9 @@ test.describe("ATS Engine section", () => {
         body: JSON.stringify({ message: "Header validation failed." }),
       });
     });
+    await page.route("**/api/ats-engine/keyword-extraction", async (route) => {
+      await fulfillJson(route, atsKeywordExtractionResponse);
+    });
 
     await page.goto("/resume");
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications.");

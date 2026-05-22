@@ -35,6 +35,26 @@ export default function AtsFinalAssessmentSummary({
   const singleWordMetrics = getKeywordTypeMetrics(keywordScores, "single_word");
   const multiWordMetrics = getKeywordTypeMetrics(keywordScores, "multi_word");
 
+  function scoreAggregate(score: number) {
+    let finalScore = 0;
+
+    if (score > 35) {
+      finalScore = score + 40;
+    } else if (score > 30) {
+      finalScore = score + 35;
+    } else if (score > 25) {
+      finalScore = score + 30;
+    } else if (score > 15 && score < 25) {
+      finalScore = score + 25;
+    } else {
+      finalScore = score;
+    }
+
+    finalScore = finalScore > 100 ? 100 : finalScore;
+
+    return finalScore;
+  }
+
   return (
     <div className="flex flex-col gap-4 border-t">
       <Accordion
@@ -46,7 +66,6 @@ export default function AtsFinalAssessmentSummary({
           <AccordionTrigger className="w-full">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between w-full">
               <div className="flex flex-col">
-               
                 <div className="text-lg font-semibold">
                   Weighted Keyword score
                 </div>
@@ -54,7 +73,7 @@ export default function AtsFinalAssessmentSummary({
 
               <div className="text-xl text-muted-foreground font-bold">
                 <span className="font-extrabold text-4xl text-card-foreground">
-                  {assessment.overall_keyword_score}
+                  {scoreAggregate(assessment.overall_keyword_score)}
                 </span>
                 /100
               </div>
@@ -62,12 +81,8 @@ export default function AtsFinalAssessmentSummary({
           </AccordionTrigger>
 
           <AccordionContent className="flex flex-col gap-4 h-fit">
-            <div className="flex flex-col gap-2 w-full">
-      
-       
-            </div>
+            <div className="flex flex-col gap-2 w-full"></div>
 
-      
             <div className="text-lg font-semibold">Keyword Coverage</div>
             <AtsCoverageSummary
               tierBreakdown={assessment.tier_breakdown}

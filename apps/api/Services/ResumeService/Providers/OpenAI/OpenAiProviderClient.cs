@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -114,37 +115,33 @@ public sealed class OpenAiProviderClient : IAiProviderClient
     {
         var resolvedModel = ResolveModel(model);
 
-        var requestBody = new
+        var input = new object[]
         {
-            model = resolvedModel,
-            input = new object[]
+            new
             {
-                new
+                role = "user",
+                content = new object[]
                 {
-                    role = "user",
-                    content = new object[]
-                    {
-                        new { type = "input_text", text = prompt },
-                        new { type = "input_file", file_id = fileId }
-                    }
-                }
-            },
-            text = new
-            {
-                verbosity = resolvedModel == _options.DefaultModel ? "medium" : "low",
-                format = new
-                {
-                    type = "json_schema",
-                    name = schemaName,
-                    strict = true,
-                    schema
+                    new { type = "input_text", text = prompt },
+                    new { type = "input_file", file_id = fileId }
                 }
             }
         };
 
+        var requestBody = OpenAiResponsesRequestFactory.CreateStructuredRequest(
+            resolvedModel,
+            input,
+            schemaName,
+            schema,
+            _options.ResumeReviewMaxOutputTokens);
         var json = JsonSerializer.Serialize(requestBody);
-        _logger.LogInformation("Sending OpenAI request for schema {SchemaName}", schemaName);
+        _logger.LogInformation(
+            "Sending OpenAI request. Schema: {SchemaName}. Model: {Model}. RequestBodyLength: {RequestBodyLength}.",
+            schemaName,
+            resolvedModel,
+            json.Length);
 
+        var stopwatch = Stopwatch.StartNew();
         using var response = await _retryPolicy.SendAsync(
             async token =>
             {
@@ -153,21 +150,41 @@ public sealed class OpenAiProviderClient : IAiProviderClient
             },
             $"structured request '{schemaName}'",
             cancellationToken);
+        stopwatch.Stop();
         var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
+            var error = OpenAiErrorInfo.Parse(responseText);
             _logger.LogError(
-                "OpenAI request failed. Schema: {SchemaName}. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
+                "OpenAI request failed. Schema: {SchemaName}. Model: {Model}. Status: {Status}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
                 schemaName,
+                resolvedModel,
                 response.StatusCode,
-                responseText.Length);
+                stopwatch.ElapsedMilliseconds,
+                responseText.Length,
+                error.Type,
+                error.Code,
+                error.Param,
+                error.Message);
 
             throw new InvalidOperationException(
                 $"OpenAI request failed for schema '{schemaName}': {response.StatusCode}.");
         }
 
+        var usage = OpenAiResponseUsageParser.Parse(responseText);
         var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
+        _logger.LogInformation(
+            "OpenAI request succeeded. Schema: {SchemaName}. Model: {Model}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. InputTokens: {InputTokens}. OutputTokens: {OutputTokens}. TotalTokens: {TotalTokens}. CachedTokens: {CachedTokens}.",
+            schemaName,
+            resolvedModel,
+            stopwatch.ElapsedMilliseconds,
+            responseText.Length,
+            modelJson.Length,
+            usage.InputTokens,
+            usage.OutputTokens,
+            usage.TotalTokens,
+            usage.CachedTokens);
 
         return JsonSerializer.Deserialize<T>(
             modelJson,

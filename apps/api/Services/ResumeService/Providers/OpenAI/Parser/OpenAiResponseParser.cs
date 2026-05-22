@@ -61,7 +61,7 @@ public class OpenAiResponseParser
         if (string.IsNullOrWhiteSpace(result))
         {
             throw new InvalidOperationException(
-                $"No output_text content was found in the OpenAI response. Raw response: {responseJson}");
+                $"No output_text content was found in the OpenAI response. ResponseBodyLength: {responseJson.Length}.");
         }
 
         return result;

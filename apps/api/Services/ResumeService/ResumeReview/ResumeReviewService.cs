@@ -27,4 +27,22 @@ public class ResumeReviewService : IResumeReviewService
             jobDescription: request.JobDescription,
             cancellationToken: cancellationToken);
     }
+
+    public async IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeStreamAsync(
+        ResumeReviewRequest request,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await using var stream = request.Resume.OpenReadStream();
+
+        await foreach (var streamEvent in _aiResumeAnalysisService.AnalyzeResumeStreamAsync(
+                           aiModel: request.AiModel,
+                           pdfStream: stream,
+                           fileName: request.Resume.FileName,
+                           contentType: request.Resume.ContentType,
+                           jobDescription: request.JobDescription,
+                           cancellationToken: cancellationToken))
+        {
+            yield return streamEvent;
+        }
+    }
 }

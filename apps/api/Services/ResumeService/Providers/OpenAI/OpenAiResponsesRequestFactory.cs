@@ -1,0 +1,85 @@
+namespace ResumeReview.Api.Services.Providers.OpenAI;
+
+public static class OpenAiResponsesRequestFactory
+{
+    public static Dictionary<string, object?> CreateStructuredRequest(
+        string model,
+        object[] input,
+        string schemaName,
+        object schema,
+        int? maxOutputTokens = null,
+        string? promptCacheKey = null)
+    {
+        var request = new Dictionary<string, object?>
+        {
+            ["model"] = model,
+            ["input"] = input,
+            ["text"] = new
+            {
+                verbosity = ResolveTextVerbosity(model),
+                format = new
+                {
+                    type = "json_schema",
+                    name = schemaName,
+                    strict = true,
+                    schema
+                }
+            }
+        };
+
+        if (SupportsTemperature(model))
+        {
+            request["temperature"] = 0;
+        }
+
+        if (maxOutputTokens is > 0)
+        {
+            request["max_output_tokens"] = maxOutputTokens.Value;
+        }
+
+        if (SupportsReasoning(model))
+        {
+            request["reasoning"] = new { effort = ResolveReasoningEffort(model) };
+        }
+
+        if (!string.IsNullOrWhiteSpace(promptCacheKey))
+        {
+            request["prompt_cache_key"] = promptCacheKey;
+        }
+
+        return request;
+    }
+
+    public static bool SupportsLowVerbosity(string model)
+    {
+        return IsGpt5Model(model);
+    }
+
+    public static string ResolveTextVerbosity(string model)
+    {
+        return SupportsLowVerbosity(model) ? "low" : "medium";
+    }
+
+    public static bool SupportsReasoning(string model)
+    {
+        return IsGpt5Model(model);
+    }
+
+    public static string ResolveReasoningEffort(string model)
+    {
+        return model.Equals("gpt-5-mini", StringComparison.OrdinalIgnoreCase) ||
+               model.Equals("gpt-5-nano", StringComparison.OrdinalIgnoreCase)
+            ? "minimal"
+            : "low";
+    }
+
+    private static bool IsGpt5Model(string model)
+    {
+        return model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool SupportsTemperature(string model)
+    {
+        return !IsGpt5Model(model);
+    }
+}

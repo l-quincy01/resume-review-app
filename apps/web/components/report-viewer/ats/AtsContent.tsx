@@ -33,7 +33,7 @@ export default function AtsContent({ atsContent, spellingAndGrammar }: props) {
                   <div className="font-bold text-muted-foreground">
                     <span className="text-xl text-card-foreground ">
                       {" "}
-                      {item.score / 10}{" "}
+                      {formatScore(item.score)}{" "}
                     </span>
                     {"/"}10
                   </div>
@@ -135,7 +135,7 @@ export default function AtsContent({ atsContent, spellingAndGrammar }: props) {
                 <div className="font-bold text-muted-foreground">
                   <span className="text-xl text-card-foreground ">
                     {" "}
-                    {spellingAndGrammar.score / 10}{" "}
+                    {formatScore(spellingAndGrammar.score)}{" "}
                   </span>
                   {"/"}10
                 </div>
@@ -167,4 +167,8 @@ export default function AtsContent({ atsContent, spellingAndGrammar }: props) {
       </Accordion>
     </div>
   );
+}
+
+function formatScore(score: number) {
+  return Number.isFinite(score) ? score / 10 : 0;
 }

@@ -1,6 +1,5 @@
 import { atsContent, spellingAndGrammar } from "@/types/atsReport.type";
 import { jobListing } from "@/types/jobListing.type";
-import { jobMatch } from "@/types/jobMatch.type";
 import { JobRecommendation } from "@/types/jobRecommendations.type";
 
 export const spellingAndGrammerData: spellingAndGrammar = {
@@ -310,66 +309,6 @@ export const atsReportData: atsContent = {
           content: "Add open-source recognitions as alternative",
         },
       ],
-    },
-  ],
-};
-
-export const jobMatchData: jobMatch = {
-  name: "Senior Frontend Engineer – React / Web Platform",
-
-  overallScore: 94,
-
-  jobDescription:
-    "We are looking for a Senior Frontend Engineer to lead development of scalable React-based web platforms, build design systems, improve developer experience, and collaborate across cross-functional teams. The role requires strong experience in TypeScript, performance optimisation, accessibility, and large-scale frontend architecture.",
-
-  targetJob: [
-    {
-      score: 98,
-      type: "Skills Match",
-      content:
-        "Strong alignment with required frontend technologies including React, TypeScript, Next.js, design systems, accessibility, and large-scale UI architecture. Experience building internal frameworks, CMS-driven UI, and performance optimisations directly matches senior frontend platform expectations.",
-    },
-    {
-      score: 95,
-      type: "Keywords & ATS Optimization",
-      content:
-        "Resume contains high-value ATS keywords such as React, Next.js, TypeScript, GraphQL, design systems, accessibility, infrastructure, and scalable architecture. Could be improved by explicitly adding 'frontend architecture', 'performance optimisation', and 'web platform engineering'.",
-    },
-    {
-      score: 96,
-      type: "Education & Qualifications",
-      content:
-        "BSc in Computer Science from National University of Singapore with First Class Honours and multiple academic awards strongly supports senior engineering roles and demonstrates strong theoretical foundation.",
-    },
-    {
-      score: 97,
-      type: "Industry/Domain Relevance",
-      content:
-        "Experience at Meta, Grab, and startup environment building large-scale consumer web platforms, developer tooling, and design systems directly aligns with modern frontend platform engineering roles.",
-    },
-    {
-      score: 94,
-      type: "Job Title Alignment",
-      content:
-        "Previous roles including Staff Frontend Engineer, Engineering Lead, and Co-founder building frontend infrastructure closely match Senior Frontend Engineer and Frontend Platform Engineer titles.",
-    },
-    {
-      score: 99,
-      type: "Seniority/Experience Level",
-      content:
-        "Over 8 years of frontend engineering experience including Staff Engineer level leadership, cross-team architecture ownership, and large-scale system design strongly matches senior and staff-level expectations.",
-    },
-    {
-      score: 93,
-      type: "Accomplishments & Metrics",
-      content:
-        "Resume includes strong measurable impact such as 1.5M monthly pageviews, 60k MAU, 40+ engineers collaboration, 10+ teams adoption, and open-source projects with 50k+ stars. Additional business metrics would further strengthen impact.",
-    },
-    {
-      score: 90,
-      type: "Cultural & Values Fit Signals",
-      content:
-        "Evidence of open source leadership, mentorship, cross-functional collaboration, and developer experience improvements aligns well with engineering culture focused on ownership and impact.",
     },
   ],
 };

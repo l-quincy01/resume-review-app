@@ -36,6 +36,35 @@ public class KeywordScoringControllerTests
     }
 
     [Fact]
+    public void ScoreKeywords_RejectsNullKeywordScores()
+    {
+        var controller = CreateController();
+
+        var result = controller.ScoreKeywords(new KeywordScoringRequest
+        {
+            KeywordScores = null!
+        });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("keyword_scores is required", badRequest.Value!.ToString());
+    }
+
+    [Fact]
+    public void ScoreKeywords_RejectsNullKeywordItem()
+    {
+        var controller = CreateController();
+        var request = new KeywordScoringRequest
+        {
+            KeywordScores = [null!]
+        };
+
+        var result = controller.ScoreKeywords(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("keyword_scores[0] is required", badRequest.Value!.ToString());
+    }
+
+    [Fact]
     public void ScoreKeywords_RejectsInvalidTier()
     {
         var controller = CreateController();
@@ -72,8 +101,8 @@ public class KeywordScoringControllerTests
         var score = Assert.Single(response.KeywordScores);
         Assert.Equal("React", score.Keyword);
         Assert.Equal(1.15m, score.RequirementMultiplier);
-        Assert.Equal(25, score.ContextPoints);
-        Assert.Equal(29, score.KeywordScore);
+        Assert.Equal(50, score.ContextPoints);
+        Assert.Equal(58, score.KeywordScore);
     }
 
     private static KeywordScoringController CreateController()

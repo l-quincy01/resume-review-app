@@ -40,43 +40,39 @@ public class OpenAiJobListingsService : IJobListingsService
     {
         var prompt = BuildJobListingsPrompt(profile);
 
-        var requestBody = new
+        var requestBody = new Dictionary<string, object?>
         {
-            model = _options.JobListingsModel,
-            reasoning = new
+            ["model"] = _options.JobListingsModel,
+            ["tools"] = new object[]
             {
-                effort = "medium"
-            },
-            tools = new object[]
-            {
-            new
-            {
-                type = "web_search",
-                search_context_size = "medium",
-                user_location = new
+                new
                 {
-                    type = "approximate",
-                    city = "Johannesburg",
-                    region = "Gauteng",
-                    country = "ZA",
-                    timezone = "Africa/Johannesburg"
+                    type = "web_search",
+                    search_context_size = "medium",
+                    user_location = new
+                    {
+                        type = "approximate",
+                        city = "Johannesburg",
+                        region = "Gauteng",
+                        country = "ZA",
+                        timezone = "Africa/Johannesburg"
+                    }
                 }
-            }
             },
-            input = new object[]
+            ["input"] = new object[]
             {
-            new
-            {
-                role = "user",
-                content = new object[]
+                new
                 {
-                    new { type = "input_text", text = prompt }
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = prompt }
+                    }
                 }
-            }
             },
-            text = new
+            ["text"] = new
             {
-                verbosity = "low",
+                verbosity = OpenAiResponsesRequestFactory.ResolveTextVerbosity(_options.JobListingsModel),
                 format = new
                 {
                     type = "json_schema",
@@ -122,6 +118,19 @@ public class OpenAiJobListingsService : IJobListingsService
             }
         };
 
+        if (OpenAiResponsesRequestFactory.SupportsReasoning(_options.JobListingsModel))
+        {
+            requestBody["reasoning"] = new
+            {
+                effort = OpenAiResponsesRequestFactory.ResolveReasoningEffort(_options.JobListingsModel)
+            };
+        }
+
+        if (OpenAiResponsesRequestFactory.SupportsTemperature(_options.JobListingsModel))
+        {
+            requestBody["temperature"] = 0;
+        }
+
         var json = JsonSerializer.Serialize(requestBody);
         try
         {
@@ -143,10 +152,15 @@ public class OpenAiJobListingsService : IJobListingsService
 
             if (!response.IsSuccessStatusCode)
             {
+                var error = OpenAiErrorInfo.Parse(responseText);
                 _logger.LogError(
-                    "OpenAI job listings failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
+                    "OpenAI job listings failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
                     response.StatusCode,
-                    responseText.Length);
+                    responseText.Length,
+                    error.Type,
+                    error.Code,
+                    error.Param,
+                    error.Message);
 
                 return new JobListings { jobListings = [] };
             }

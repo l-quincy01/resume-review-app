@@ -4,6 +4,14 @@ namespace ResumeReview.Api.Services.AtsService.KeywordScoring;
 
 public sealed class KeywordScoringService : IKeywordScoringService
 {
+    private static readonly Dictionary<int, int> PresenceBaselinePoints = new()
+    {
+        [0] = 25,
+        [1] = 22,
+        [2] = 18,
+        [3] = 15
+    };
+
     private static readonly Dictionary<int, ContextPointTable> PointTables = new()
     {
         [0] = new ContextPointTable(25, 20, 12, 15, 15, 12),
@@ -14,9 +22,12 @@ public sealed class KeywordScoringService : IKeywordScoringService
 
     public KeywordScoringResponse Score(KeywordAnalysisResponse contextualKeywords)
     {
+        var keywordScores = contextualKeywords.KeywordScores ?? [];
+
         return new KeywordScoringResponse
         {
-            KeywordScores = contextualKeywords.KeywordScores
+            KeywordScores = keywordScores
+                .Where(keyword => keyword is not null)
                 .Select(ScoreKeyword)
                 .ToList()
         };
@@ -24,6 +35,10 @@ public sealed class KeywordScoringService : IKeywordScoringService
 
     private static KeywordScoreObject ScoreKeyword(KeywordAnalysisItemResponse keyword)
     {
+        var contextType = keyword.ContextType ?? new KeywordContextTypeResponse();
+        var variations = keyword.Variations ?? [];
+        var matchedTerms = keyword.MatchedTerms ?? [];
+        var evidence = keyword.Evidence ?? [];
         var multiplier = GetRequirementMultiplier(keyword.Requirement);
         var contextPoints = GetContextPoints(keyword);
         var rawKeywordScore = contextPoints * multiplier;
@@ -36,17 +51,17 @@ public sealed class KeywordScoringService : IKeywordScoringService
 
         return new KeywordScoreObject
         {
-            Keyword = keyword.Keyword,
+            Keyword = keyword.Keyword ?? string.Empty,
             Present = keyword.Present,
             Tier = keyword.Tier,
-            Requirement = keyword.Requirement,
-            KeywordType = keyword.KeywordType,
+            Requirement = keyword.Requirement ?? string.Empty,
+            KeywordType = keyword.KeywordType ?? string.Empty,
             Frequency = keyword.Frequency,
-            Context = keyword.Context,
-            Variations = keyword.Variations,
-            MatchedTerms = keyword.MatchedTerms,
-            ContextType = keyword.ContextType,
-            Evidence = keyword.Evidence,
+            Context = keyword.Context ?? string.Empty,
+            Variations = variations,
+            MatchedTerms = matchedTerms,
+            ContextType = contextType,
+            Evidence = evidence,
             RequirementMultiplier = multiplier,
             ContextPoints = contextPoints,
             KeywordScore = keywordScore
@@ -73,7 +88,7 @@ public sealed class KeywordScoringService : IKeywordScoringService
         }
 
         var table = PointTables[keyword.Tier];
-        var points = 0;
+        var points = PresenceBaselinePoints[keyword.Tier];
 
         if (contextType.HasAchievement)
         {

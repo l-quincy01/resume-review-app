@@ -41,14 +41,13 @@ public class AiSchemaRegressionTests
         IAiAnalysisTask<object>[] tasks =
         [
             Cast(new AtsContentTask()),
-            Cast(new JobMatchTask()),
             Cast(new JobRecommendationTask()),
             Cast(new JobSearchProfileTask()),
             Cast(new SpellingAndGrammarTask())
         ];
 
         Assert.Equal(
-            ["ats_content", "job_match", "job_recommendation", "job_search_profile", "spelling_and_grammar"],
+            ["ats_content", "job_recommendation", "job_search_profile", "spelling_and_grammar"],
             tasks.Select(task => task.SchemaName));
     }
 
@@ -108,7 +107,6 @@ public class AiSchemaRegressionTests
     public static IEnumerable<object[]> Schemas()
     {
         yield return ["ats_content", AtsContentSchema.Schema, new[] { "heading", "resumeName", "content" }];
-        yield return ["job_match", JobMatchSchema.Schema, new[] { "name", "targetJob", "overallScore" }];
         yield return ["job_recommendation", JobRecommendationSchema.Schema, new[] { "yearsExperience", "jobTitles", "responsibilities" }];
         yield return ["job_search_profile", JobSearchProfileSchema.Schema, new[] { "titles", "keywords", "seniority", "locations", "exclude" }];
         yield return ["spelling_and_grammar", SpellingAndGrammarSchema.Schema, new[] { "score", "grammarSuggestions", "spellingSuggestions" }];

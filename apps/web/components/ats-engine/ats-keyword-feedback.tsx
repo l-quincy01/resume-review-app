@@ -60,7 +60,7 @@ function WeakKeywordRecommendationSection({
   }
 
   return (
-    <FeedbackSection title="Weak Keyword Usage">
+    <FeedbackSection title="Improve Weak Keyword Usage">
       {keywords.map((keyword) => (
         <WeakKeywordCard
           key={`weak-recommendation-${keyword.keyword}`}
@@ -85,7 +85,7 @@ function StuffedKeywordRecommendationSection({
   }
 
   return (
-    <FeedbackSection title="Stuffed Keywords">
+    <FeedbackSection title="Fix Stuffed Keywords">
       <div>
         Use this keyword in a truthful Work Experience or Projects bullet with
         an action verb and measurable result, or remove it if it is only listed
@@ -172,14 +172,14 @@ function FeedbackSection({
             High Priority
           </span>
         )}
-        {title === "Stuffed Keywords" && (
+        {title === "Fix Stuffed Keywords" && (
           <span
             className={`rounded-md border px-2.5 py-1 text-xs font-medium    border-destructive/30 bg-destructive/10 text-destructive"`}
           >
             High Priority
           </span>
         )}
-        {title === "Weak Keyword Usage" && (
+        {title === "Improve Weak Keyword Usage" && (
           <span
             className={`rounded-md border px-2.5 py-1 text-xs font-medium   border-yellow-500/30 bg-yellow-500/15 text-yellow-700 dark:text-yellow-300"`}
           >

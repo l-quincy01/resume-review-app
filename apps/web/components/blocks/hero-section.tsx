@@ -186,17 +186,17 @@ export function HeroSection() {
               <AnimatedGroup variants={animatedVariants}>
                 <div className="relative">
                   <div className="absolute -inset-4 -z-10 rounded-[2rem] bg-muted/40 blur-2xl" />
-                  <div className="relative overflow-hidden rounded-[1.75rem] border bg-background p-3 shadow-2xl shadow-zinc-950/10 ring-1">
+                  <div className="relative overflow-hidden ">
                     <Image
                       className="hidden aspect-[15/8] rounded-[1.25rem] object-cover dark:block"
-                      src="https://tailark.com/_next/image?url=%2Fmail2.png&w=3840&q=75"
+                      src="/hero-banner-dark.png"
                       alt="Resume review dashboard preview"
                       width={2700}
                       height={1440}
                     />
                     <Image
-                      className="aspect-[15/8] rounded-[1.25rem] border border-border/30 object-cover dark:hidden"
-                      src="https://tailark.com/_next/image?url=%2Fmail2-light.png&w=3840&q=75"
+                      className="aspect-[15/8] rounded-[1.25rem]  object-cover dark:hidden"
+                      src="/hero-banner.png"
                       alt="Resume review dashboard preview"
                       width={2700}
                       height={1440}

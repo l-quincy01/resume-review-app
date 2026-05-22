@@ -8,13 +8,15 @@ public sealed class KeywordAnalysisMerger
 
     public KeywordAnalysisResponse Merge(KeywordExtractionResponse stageBKeywords, KeywordAnalysisResponse llmResponse)
     {
-        var llmScores = llmResponse.KeywordScores
+        var llmScores = (llmResponse.KeywordScores ?? [])
+            .Where(score => score is not null && !string.IsNullOrWhiteSpace(score.Keyword))
             .GroupBy(score => score.Keyword, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
         return new KeywordAnalysisResponse
         {
-            KeywordScores = stageBKeywords.Keywords
+            KeywordScores = (stageBKeywords.Keywords ?? [])
+                .Where(keyword => keyword is not null && !string.IsNullOrWhiteSpace(keyword.Keyword))
                 .Select(keyword =>
                 {
                     var score = llmScores.TryGetValue(keyword.Keyword, out var llmScore)
@@ -36,14 +38,14 @@ public sealed class KeywordAnalysisMerger
             Keyword = keyword.Keyword,
             Present = score.Present,
             Tier = keyword.Tier,
-            Requirement = keyword.Requirement,
-            KeywordType = keyword.KeywordType,
+            Requirement = keyword.Requirement ?? string.Empty,
+            KeywordType = keyword.KeywordType ?? string.Empty,
             Frequency = keyword.Frequency,
-            Context = keyword.Context,
-            Variations = keyword.Variations,
-            MatchedTerms = score.MatchedTerms,
+            Context = keyword.Context ?? string.Empty,
+            Variations = keyword.Variations ?? [],
+            MatchedTerms = score.MatchedTerms ?? [],
             ContextType = score.ContextType ?? new KeywordContextTypeResponse(),
-            Evidence = score.Evidence.Take(MaxEvidenceSnippets).ToList()
+            Evidence = (score.Evidence ?? []).Take(MaxEvidenceSnippets).ToList()
         };
     }
 

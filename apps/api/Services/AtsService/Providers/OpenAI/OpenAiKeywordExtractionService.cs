@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -44,32 +45,23 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
         CancellationToken cancellationToken = default)
     {
         var prompt = BuildPrompt(jobDescription);
-        var requestBody = new
+        var input = new object[]
         {
-            model = aiModel,
-            input = new object[]
+            new
             {
-                new
+                role = "user",
+                content = new object[]
                 {
-                    role = "user",
-                    content = new object[]
-                    {
-                        new { type = "input_text", text = prompt }
-                    }
-                }
-            },
-            text = new
-            {
-                verbosity = "low",
-                format = new
-                {
-                    type = "json_schema",
-                    name = SchemaName,
-                    strict = true,
-                    schema = AtsKeywordExtractionSchema.Schema
+                    new { type = "input_text", text = prompt }
                 }
             }
         };
+        var requestBody = OpenAiResponsesRequestFactory.CreateStructuredRequest(
+            aiModel,
+            input,
+            SchemaName,
+            AtsKeywordExtractionSchema.Schema,
+            _options.KeywordExtractionMaxOutputTokens);
 
         var json = JsonSerializer.Serialize(requestBody);
 
@@ -80,6 +72,7 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
                 aiModel,
                 jobDescription.Length);
 
+            var stopwatch = Stopwatch.StartNew();
             using var response = await _retryPolicy.SendAsync(
                 async token =>
                 {
@@ -88,19 +81,28 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
                 },
                 "ATS keyword extraction",
                 cancellationToken);
+            stopwatch.Stop();
             var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
+                var error = OpenAiErrorInfo.Parse(responseText);
                 _logger.LogError(
-                    "OpenAI ATS keyword extraction failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}.",
+                    "OpenAI ATS keyword extraction failed. Model: {Model}. Status: {Status}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
+                    aiModel,
                     response.StatusCode,
-                    responseText.Length);
+                    stopwatch.ElapsedMilliseconds,
+                    responseText.Length,
+                    error.Type,
+                    error.Code,
+                    error.Param,
+                    error.Message);
 
                 throw new InvalidOperationException(
                     $"OpenAI ATS keyword extraction failed: {response.StatusCode}.");
             }
 
+            var usage = OpenAiResponseUsageParser.Parse(responseText);
             var modelJson = OpenAiResponseParser.ExtractTextOutput(responseText);
             var extraction = JsonSerializer.Deserialize<KeywordExtractionResponse>(
                 modelJson,
@@ -110,8 +112,16 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
                 }) ?? throw new InvalidOperationException("OpenAI ATS keyword extraction returned an empty result.");
 
             _logger.LogInformation(
-                "ATS keyword extraction succeeded. KeywordCount: {KeywordCount}.",
-                extraction.Keywords.Count);
+                "ATS keyword extraction succeeded. Model: {Model}. ElapsedMs: {ElapsedMs}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. KeywordCount: {KeywordCount}. InputTokens: {InputTokens}. OutputTokens: {OutputTokens}. TotalTokens: {TotalTokens}. CachedTokens: {CachedTokens}.",
+                aiModel,
+                stopwatch.ElapsedMilliseconds,
+                responseText.Length,
+                modelJson.Length,
+                extraction.Keywords.Count,
+                usage.InputTokens,
+                usage.OutputTokens,
+                usage.TotalTokens,
+                usage.CachedTokens);
 
             return _enricher.Enrich(extraction, jobDescription);
         }

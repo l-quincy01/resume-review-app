@@ -16,7 +16,7 @@ public static class OpenAiResponsesRequestFactory
             ["input"] = input,
             ["text"] = new
             {
-                verbosity = "low",
+                verbosity = ResolveTextVerbosity(model),
                 format = new
                 {
                     type = "json_schema",
@@ -37,7 +37,7 @@ public static class OpenAiResponsesRequestFactory
             request["max_output_tokens"] = maxOutputTokens.Value;
         }
 
-        if (IsGpt5Model(model))
+        if (SupportsReasoning(model))
         {
             request["reasoning"] = new { effort = "minimal" };
         }
@@ -48,6 +48,21 @@ public static class OpenAiResponsesRequestFactory
         }
 
         return request;
+    }
+
+    public static bool SupportsLowVerbosity(string model)
+    {
+        return IsGpt5Model(model);
+    }
+
+    public static string ResolveTextVerbosity(string model)
+    {
+        return SupportsLowVerbosity(model) ? "low" : "medium";
+    }
+
+    public static bool SupportsReasoning(string model)
+    {
+        return IsGpt5Model(model);
     }
 
     private static bool IsGpt5Model(string model)

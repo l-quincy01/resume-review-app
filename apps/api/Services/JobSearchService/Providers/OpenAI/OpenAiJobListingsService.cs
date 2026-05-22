@@ -43,10 +43,6 @@ public class OpenAiJobListingsService : IJobListingsService
         var requestBody = new Dictionary<string, object?>
         {
             ["model"] = _options.JobListingsModel,
-            ["reasoning"] = new
-            {
-                effort = "medium"
-            },
             ["tools"] = new object[]
             {
                 new
@@ -76,7 +72,7 @@ public class OpenAiJobListingsService : IJobListingsService
             },
             ["text"] = new
             {
-                verbosity = "low",
+                verbosity = OpenAiResponsesRequestFactory.ResolveTextVerbosity(_options.JobListingsModel),
                 format = new
                 {
                     type = "json_schema",
@@ -121,6 +117,14 @@ public class OpenAiJobListingsService : IJobListingsService
                 }
             }
         };
+
+        if (OpenAiResponsesRequestFactory.SupportsReasoning(_options.JobListingsModel))
+        {
+            requestBody["reasoning"] = new
+            {
+                effort = "medium"
+            };
+        }
 
         if (OpenAiResponsesRequestFactory.SupportsTemperature(_options.JobListingsModel))
         {

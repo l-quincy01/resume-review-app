@@ -1,33 +1,28 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 export const HeroHeader = () => {
-  const [menuState, setMenuState] = React.useState(false);
+  const [menuState, setMenuState] = useState(false);
+
+  const location = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 bg-background/50 backdrop-blur">
+    <header className="sticky top-0 z-50 bg-background/50 backdrop-blur  w-full  ">
       <nav
         data-state={menuState && "active"}
         className={cn(
-          "group relative z-20 w-full border-b transition-colors duration-150 bg-background/50 backdrop-blur",
+          "group relative z-20 w-full  transition-colors duration-150 container mx-auto md:px-36 px-4 ",
         )}
       >
-        <div className="mx-auto max-w-5xl px-6 transition-all duration-300">
+        <div className="mx-auto  transition-all duration-300">
           <div className="relative flex flex-wrap items-center justify-between gap-6 py-3 lg:gap-0 lg:py-4">
             <div className="flex w-full items-center justify-between gap-12 lg:w-auto">
-              <Link
-                href="/"
-                aria-label="home"
-                className="flex items-center space-x-2"
-              >
-                {/* <Logo /> */}
-              </Link>
-
               <button
                 onClick={() => setMenuState(!menuState)}
                 aria-label={menuState == true ? "Close Menu" : "Open Menu"}
@@ -42,23 +37,14 @@ export const HeroHeader = () => {
                   <li>
                     <Link
                       href={"/"}
-                      className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                      className="text-primary text-lg  hover:text-accent-foreground block duration-150"
                     >
-                      Resume Review<span className="text-xs">ᴮᴱᵀᴬ </span>{" "}
+                      Resume Review
+                      <span className="text-xs text-muted-foreground font-medium">
+                        ᴮᴱᵀᴬ{" "}
+                      </span>{" "}
                     </Link>
                   </li>
-
-                  {/* {!isReportPage &&
-                    menuItems.map((item, index) => (
-                      <li key={index}>
-                        <Link
-                          href={item.href}
-                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                        >
-                          <span>{item.name}</span>
-                        </Link>
-                      </li>
-                    ))} */}
                 </ul>
               </div>
             </div>
@@ -74,28 +60,16 @@ export const HeroHeader = () => {
                       Resume Review<span className="text-xs">ᴮᴱᵀᴬ </span>{" "}
                     </Link>
                   </li>
-                  {/* 
-                  {!isReportPage &&
-                    menuItems.map((item, index) => (
-                      <li key={index}>
-                        <Link
-                          href={item.href}
-                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                        >
-                          <span>{item.name}</span>
-                        </Link>
-                      </li>
-                    ))} */}
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                {
+                {location !== "/resume" && (
                   <Button asChild size="sm">
                     <Link href="/resume">
                       <span>Scan your resume</span>
                     </Link>
                   </Button>
-                }
+                )}
               </div>
             </div>
           </div>

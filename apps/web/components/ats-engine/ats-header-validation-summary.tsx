@@ -45,7 +45,7 @@ export default function AtsHeaderValidationSummary({
                   Structure quality: {headerValidation.structure_quality}
                 </div>
                 <div className="text-lg font-semibold">
-                  ATS Header Validation
+                  Resume Header Validation
                 </div>
               </div>
 

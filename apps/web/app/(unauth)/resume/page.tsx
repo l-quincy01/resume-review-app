@@ -301,8 +301,8 @@ export default function Page() {
       );
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      <div className=" w-full container mx-auto  md:px-36 px-4">
+    <div className="flex flex-col items-center justify-center container mx-auto ">
+      <div className=" w-full  md:px-36 px-4 pt-4">
         {!reportData && !isSubmitting ? (
           <div className="flex flex-col gap-4 justify-center px-4  ">
             <HomeHeader />
@@ -353,9 +353,8 @@ export default function Page() {
                   />
                 )}
                 {isSubmitting &&
-                  (!reportData?.atsContent || !reportData?.spellingAndGrammar) && (
-                    <AtsContentSkeleton />
-                  )}
+                  (!reportData?.atsContent ||
+                    !reportData?.spellingAndGrammar) && <AtsContentSkeleton />}
 
                 {/* QUANTITATIVE ANALYSIS */}
                 {isAtsEngineLoading && !atsEngineResult && !atsEngineError && (
@@ -433,7 +432,8 @@ function applyResumeReviewSection(
     case "job_recommendation":
       return {
         ...(current ?? {}),
-        jobRecommendation: payload as ResumeAnalysisResponse["jobRecommendation"],
+        jobRecommendation:
+          payload as ResumeAnalysisResponse["jobRecommendation"],
       };
     case "job_search_profile":
       return {

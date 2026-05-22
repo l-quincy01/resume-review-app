@@ -41,6 +41,7 @@ public class OpenAiResponsesRequestFactoryTests
         Assert.False(document.RootElement.TryGetProperty("reasoning", out _));
         Assert.False(document.RootElement.TryGetProperty("max_output_tokens", out _));
         Assert.Equal(0, document.RootElement.GetProperty("temperature").GetInt32());
+        Assert.Equal("medium", document.RootElement.GetProperty("text").GetProperty("verbosity").GetString());
     }
 
     [Fact]

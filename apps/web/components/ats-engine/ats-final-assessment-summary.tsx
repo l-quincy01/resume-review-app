@@ -56,7 +56,7 @@ export default function AtsFinalAssessmentSummary({
   }
 
   return (
-    <div className="flex flex-col gap-4 border-t">
+    <div className="flex flex-col gap-4 border-t" data-testid="ats-final-assessment-summary">
       <Accordion
         type="multiple"
         defaultValue={["default"]}

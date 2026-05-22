@@ -11,7 +11,7 @@ export default function AtsEngineResultsSkeleton() {
   );
 }
 
-function AtsHeaderValidationSummarySkeleton() {
+export function AtsHeaderValidationSummarySkeleton() {
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-md border-0">
@@ -46,7 +46,7 @@ function AtsHeaderValidationSummarySkeleton() {
   );
 }
 
-function AtsFinalAssessmentSummarySkeleton() {
+export function AtsFinalAssessmentSummarySkeleton() {
   return (
     <div className="flex flex-col gap-4 border-t">
       <div className="flex w-full flex-col gap-3 py-4 md:flex-row md:items-start md:justify-between">

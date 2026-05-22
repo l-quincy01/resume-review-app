@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { mockAtsEnginePipeline } from "./fixtures/atsEngine";
+import {
+  atsContextualScoringResponse,
+  atsFinalAssessmentResponse,
+  atsHeaderValidationResponse,
+  atsKeywordExtractionResponse,
+  atsKeywordScoringResponse,
+  fulfillJson,
+  mockAtsEnginePipeline,
+} from "./fixtures/atsEngine";
 import { fulfillResumeReviewStream, pdfBuffer } from "./fixtures/resumeReview";
 
 test.describe("ATS Engine section", () => {
@@ -11,7 +19,7 @@ test.describe("ATS Engine section", () => {
     await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
 
     await page.goto("/resume");
-    await page.getByText("GPT-5 Nano").click();
+    await page.getByText("GPT-5 Mini").click();
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications with TypeScript.");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
@@ -21,7 +29,8 @@ test.describe("ATS Engine section", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
-    await expect(page.getByText("ATS Header Validation")).toBeVisible();
+    await expect(page.getByText("Quantitative ATS Analysis")).toBeVisible();
+    await expect(page.getByTestId("ats-header-validation-summary")).toBeVisible();
     await expect(page.getByText("Weighted Keyword score")).toBeVisible();
     await expect(page.getByText("Present:").first()).toBeVisible();
     await expect(page.getByText("React").first()).toBeVisible();
@@ -101,6 +110,50 @@ test.describe("ATS Engine section", () => {
     ]);
   });
 
+  test("hydrates ATS results stage by stage", async ({ page }) => {
+    let releaseKeywordExtraction: () => void = () => {};
+    const keywordExtractionGate = new Promise<void>((resolve) => {
+      releaseKeywordExtraction = resolve;
+    });
+
+    await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
+    await page.route("**/api/ats-engine/header-validation", async (route) => {
+      await fulfillJson(route, atsHeaderValidationResponse);
+    });
+    await page.route("**/api/ats-engine/keyword-extraction", async (route) => {
+      await keywordExtractionGate;
+      await fulfillJson(route, atsKeywordExtractionResponse);
+    });
+    await page.route("**/api/ats-engine/keyword-analysis", async (route) => {
+      await fulfillJson(route, atsContextualScoringResponse);
+    });
+    await page.route("**/api/ats-engine/keyword-scoring", async (route) => {
+      await fulfillJson(route, atsKeywordScoringResponse);
+    });
+    await page.route("**/api/ats-engine/final-assessment", async (route) => {
+      await fulfillJson(route, atsFinalAssessmentResponse);
+    });
+
+    await page.goto("/resume");
+    await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications with TypeScript.");
+    await page.getByLabel("Upload CV").setInputFiles({
+      name: "resume.pdf",
+      mimeType: "application/pdf",
+      buffer: pdfBuffer,
+    });
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    await expect(page.getByText("Quantitative ATS Analysis")).toBeVisible();
+    await expect(page.getByTestId("ats-header-validation-summary")).toBeVisible();
+    await expect(page.getByText("Weighted Keyword score")).not.toBeVisible();
+
+    releaseKeywordExtraction();
+
+    await expect(page.getByTestId("ats-final-assessment-summary")).toBeVisible();
+    await expect(page.getByText("Weighted Keyword score")).toBeVisible();
+    await expect(page.getByText("Keyword Usage", { exact: true })).toBeVisible();
+  });
+
   test("runs only header validation when no job description is provided", async ({
     page,
   }) => {
@@ -135,7 +188,8 @@ test.describe("ATS Engine section", () => {
     });
     await page.getByRole("button", { name: "Submit" }).click();
 
-    await expect(page.getByText("ATS Header Validation")).toBeVisible();
+    await expect(page.getByText("Quantitative ATS Analysis")).toBeVisible();
+    await expect(page.getByTestId("ats-header-validation-summary")).toBeVisible();
     await expect(page.getByText("Weighted Keyword score")).not.toBeVisible();
     await expect(page.getByText("Keyword Usage")).not.toBeVisible();
     expect(calls).toEqual(["header-validation"]);

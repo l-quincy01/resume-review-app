@@ -14,6 +14,12 @@ export type RunAtsEngineInput = {
   resumeFile: File;
   jobDescription: string;
   onStageChange?: (stage: AtsEngineStage) => void;
+  onStageCompleted?: (
+    stage: AtsEngineStage,
+    payload: unknown,
+    partialResult: Partial<AtsEnginePipelineResult>,
+  ) => void;
+  onCompleted?: (result: AtsEnginePipelineResult) => void;
 };
 
 async function readErrorMessage(response: Response, fallback: string) {
@@ -67,22 +73,34 @@ export async function runAtsEngine({
   resumeFile,
   jobDescription,
   onStageChange,
+  onStageCompleted,
+  onCompleted,
 }: RunAtsEngineInput): Promise<AtsEnginePipelineResult> {
   onStageChange?.("header-validation");
   const headerFormData = new FormData();
   headerFormData.append("resume", resumeFile);
 
+  const partialResult: Partial<AtsEnginePipelineResult> = {};
+
   const headerValidationPromise = postForm<AtsHeaderValidationResponse>(
     "/api/ats-engine/header-validation",
     headerFormData,
     "Header validation failed.",
-  );
+  ).then((headerValidation) => {
+    partialResult.headerValidation = headerValidation;
+    onStageCompleted?.("header-validation", headerValidation, {
+      ...partialResult,
+    });
+    return headerValidation;
+  });
 
   if (!jobDescription.trim()) {
     const headerValidation = await headerValidationPromise;
-    return {
+    const result = {
       headerValidation,
     };
+    onCompleted?.(result);
+    return result;
   }
 
   onStageChange?.("keyword-extraction");
@@ -93,7 +111,13 @@ export async function runAtsEngine({
       ai_model: aiModel,
     },
     "Keyword extraction failed.",
-  );
+  ).then((keywordExtraction) => {
+    partialResult.keywordExtraction = keywordExtraction;
+    onStageCompleted?.("keyword-extraction", keywordExtraction, {
+      ...partialResult,
+    });
+    return keywordExtraction;
+  });
 
   const [headerValidation, keywordExtraction] = await Promise.all([
     headerValidationPromise,
@@ -111,6 +135,10 @@ export async function runAtsEngine({
     contextualFormData,
     "Keyword analysis failed.",
   );
+  partialResult.contextualScoring = contextualScoring;
+  onStageCompleted?.("keyword-analysis", contextualScoring, {
+    ...partialResult,
+  });
 
   onStageChange?.("keyword-scoring");
   const keywordScoring = await postJson<AtsKeywordScoringResponse>(
@@ -120,6 +148,10 @@ export async function runAtsEngine({
     },
     "Keyword scoring failed.",
   );
+  partialResult.keywordScoring = keywordScoring;
+  onStageCompleted?.("keyword-scoring", keywordScoring, {
+    ...partialResult,
+  });
 
   onStageChange?.("final-assessment");
   const finalAssessment = await postJson<AtsFinalAssessmentResponse>(
@@ -131,12 +163,18 @@ export async function runAtsEngine({
     },
     "Final assessment failed.",
   );
+  partialResult.finalAssessment = finalAssessment;
+  onStageCompleted?.("final-assessment", finalAssessment, {
+    ...partialResult,
+  });
 
-  return {
+  const result = {
     headerValidation,
     keywordExtraction,
     contextualScoring,
     keywordScoring,
     finalAssessment,
   };
+  onCompleted?.(result);
+  return result;
 }

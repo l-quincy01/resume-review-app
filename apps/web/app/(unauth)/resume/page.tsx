@@ -31,9 +31,11 @@ import { jobListingWords } from "@/constants/constants";
 import { apiUrl } from "@/lib/api";
 import { clientLogger } from "@/lib/client-logger";
 import { runAtsEngine } from "@/service/ats-engine.service";
-import { AtsEnginePipelineResult } from "@/types/AtsEngine/ats-engine.type";
+import {
+  AtsEnginePipelineResult,
+  AtsEngineStage,
+} from "@/types/AtsEngine/ats-engine.type";
 import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
-import AtsEngineResultsSkeleton from "@/components/ats-engine/ats-engine-results-skeleton";
 import ResumeReviewProgressiveHeader from "@/components/report-viewer/progressive/resume-review-progressive-header";
 
 export default function Page() {
@@ -47,9 +49,15 @@ export default function Page() {
     null,
   );
   const [atsEngineResult, setAtsEngineResult] =
-    useState<AtsEnginePipelineResult | null>(null);
+    useState<Partial<AtsEnginePipelineResult> | null>(null);
   const [atsEngineError, setAtsEngineError] = useState<string | null>(null);
   const [isAtsEngineLoading, setIsAtsEngineLoading] = useState(false);
+  const [isAtsEngineComplete, setIsAtsEngineComplete] = useState(false);
+  const [atsEngineCurrentStage, setAtsEngineCurrentStage] =
+    useState<AtsEngineStage | null>(null);
+  const [atsEngineCompletedStages, setAtsEngineCompletedStages] = useState<
+    AtsEngineStage[]
+  >([]);
   const [isResumeReviewComplete, setIsResumeReviewComplete] = useState(false);
   const [resumeReviewCompletedSections, setResumeReviewCompletedSections] =
     useState<ResumeReviewStreamSection[]>([]);
@@ -114,6 +122,9 @@ export default function Page() {
       setAtsEngineResult(null);
       setAtsEngineError(null);
       setIsAtsEngineLoading(true);
+      setIsAtsEngineComplete(false);
+      setAtsEngineCurrentStage(null);
+      setAtsEngineCompletedStages([]);
       setIsResumeReviewComplete(false);
       setResumeReviewCompletedSections([]);
       setProgress(0);
@@ -129,10 +140,32 @@ export default function Page() {
             aiModel,
             hasJobDescription: Boolean(jobDescription.trim()),
           });
+          setAtsEngineCurrentStage(stage);
+        },
+        onStageCompleted: (stage, _payload, partialResult) => {
+          setAtsEngineResult(partialResult);
+          setAtsEngineCompletedStages((current) =>
+            current.includes(stage) ? current : [...current, stage],
+          );
+          clientLogger.info("ats_engine_stage_completed", {
+            stage,
+            aiModel,
+            hasJobDescription: Boolean(jobDescription.trim()),
+            keywordCount: partialResult.keywordExtraction?.keywords.length ?? 0,
+            scoredKeywordCount:
+              partialResult.keywordScoring?.keyword_scores.length ?? 0,
+          });
+        },
+        onCompleted: (result) => {
+          setAtsEngineResult(result);
+          setIsAtsEngineComplete(true);
+          setAtsEngineCurrentStage(null);
         },
       })
         .then((result) => {
           setAtsEngineResult(result);
+          setIsAtsEngineComplete(true);
+          setAtsEngineCurrentStage(null);
           clientLogger.info("ats_engine_completed", {
             aiModel,
             hasJobDescription: Boolean(jobDescription.trim()),
@@ -357,11 +390,17 @@ export default function Page() {
                     !reportData?.spellingAndGrammar) && <AtsContentSkeleton />}
 
                 {/* QUANTITATIVE ANALYSIS */}
-                {isAtsEngineLoading && !atsEngineResult && !atsEngineError && (
-                  <AtsEngineResultsSkeleton />
-                )}
-                {atsEngineResult && (
-                  <AtsEngineResults result={atsEngineResult} />
+                {(isAtsEngineLoading || atsEngineResult || atsEngineError) && (
+                  <AtsEngineResults
+                    aiModel={aiModel}
+                    completedStages={atsEngineCompletedStages}
+                    currentStage={atsEngineCurrentStage}
+                    error={atsEngineError}
+                    hasJobDescription={Boolean(jobDescription.trim())}
+                    isComplete={isAtsEngineComplete}
+                    isLoading={isAtsEngineLoading}
+                    result={atsEngineResult}
+                  />
                 )}
 
                 {/* JOB RECOMMENDATION  */}
@@ -395,13 +434,6 @@ export default function Page() {
                       jobListings={jobListings.jobListings}
                     />
                   )}
-                {atsEngineError && (
-                  <div className="w-full p-2">
-                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                      {atsEngineError}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

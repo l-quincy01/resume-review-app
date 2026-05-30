@@ -5,6 +5,8 @@ namespace ResumeReview.Api.Services.OpenAiApiKeys;
 public static class OpenAiApiKeyProvider
 {
     public const string HeaderName = "X-OpenAI-Api-Key";
+    public const string RedactedValue = "[REDACTED]";
+    public const string HttpContextItemKey = "OpenAiApiKey";
     private const int MaxApiKeyLength = 512;
 
     public static bool TryGetApiKey(
@@ -12,7 +14,9 @@ public static class OpenAiApiKeyProvider
         out string apiKey,
         out IActionResult? errorResult)
     {
-        apiKey = controller.Request.Headers[HeaderName].ToString().Trim();
+        apiKey = controller.HttpContext.Items.TryGetValue(HttpContextItemKey, out var itemValue)
+            ? itemValue?.ToString()?.Trim() ?? string.Empty
+            : controller.Request.Headers[HeaderName].ToString().Trim();
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {

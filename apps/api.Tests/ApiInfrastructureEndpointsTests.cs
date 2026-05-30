@@ -1,8 +1,10 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using ResumeReview.Api.Services.AbuseProtection;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 
 namespace ResumeReview.Api.Tests;
 
@@ -141,6 +143,57 @@ public sealed class ApiInfrastructureEndpointsTests
         Assert.DoesNotContain("SENSITIVE_RAW_BODY", entry.Message);
     }
 
+    [Fact]
+    public async Task CorsPreflight_AllowsConfiguredFrontendAndOpenAiApiKeyHeader()
+    {
+        using var factory = CreateFactory();
+        using var client = CreateClient(factory);
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/resume-review");
+        request.Headers.Add("Origin", "http://localhost:3000");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", ["content-type", "x-openai-api-key"]);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(
+            "http://localhost:3000",
+            response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Contains(
+            OpenAiApiKeyProvider.HeaderName,
+            response.Headers.GetValues("Access-Control-Allow-Headers").Single(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Production_ForwardedHttpsRequestReturnsOkWithHsts()
+    {
+        using var factory = CreateProductionFactory();
+        using var client = CreateClient(factory, new Uri("https://api.example"));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health/live");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Strict-Transport-Security", response.Headers.Select(header => header.Key));
+    }
+
+    [Fact]
+    public async Task OpenAiApiKeyHeaderRedactionMiddleware_RedactsHeaderForDownstreamReaders()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers[OpenAiApiKeyProvider.HeaderName] = "user-secret-key";
+        var middleware = new OpenAiApiKeyHeaderRedactionMiddleware(next =>
+        {
+            Assert.Equal(OpenAiApiKeyProvider.RedactedValue, next.Request.Headers[OpenAiApiKeyProvider.HeaderName]);
+            Assert.Equal("user-secret-key", next.Items[OpenAiApiKeyProvider.HttpContextItemKey]);
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(
         Dictionary<string, string?>? configuration = null)
     {
@@ -159,10 +212,30 @@ public sealed class ApiInfrastructureEndpointsTests
             });
     }
 
-    private static HttpClient CreateClient(WebApplicationFactory<Program> factory)
+    private static WebApplicationFactory<Program> CreateProductionFactory()
+    {
+        return new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Production");
+                builder.UseSetting("Cors:AllowedOrigins:0", "https://frontend.example");
+                builder.UseSetting("AllowedHosts", "api.example");
+                builder.ConfigureAppConfiguration((_, configBuilder) =>
+                {
+                    configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Cors:AllowedOrigins:0"] = "https://frontend.example",
+                        ["AllowedHosts"] = "api.example"
+                    });
+                });
+            });
+    }
+
+    private static HttpClient CreateClient(WebApplicationFactory<Program> factory, Uri? baseAddress = null)
     {
         return factory.CreateClient(new WebApplicationFactoryClientOptions
         {
+            BaseAddress = baseAddress ?? new Uri("http://localhost"),
             AllowAutoRedirect = false
         });
     }

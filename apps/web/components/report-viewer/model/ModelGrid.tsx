@@ -15,11 +15,11 @@ const models = [
     company: "OpenAI",
     value: "gpt-5-mini",
   },
-  {
-    name: "GPT-5 Nano",
-    company: "OpenAI",
-    value: "gpt-5-nano",
-  },
+  // {
+  //   name: "GPT-5 Nano",
+  //   company: "OpenAI",
+  //   value: "gpt-5-nano",
+  // },
   {
     name: "GPT-5.4",
     company: "OpenAI",

@@ -2,7 +2,6 @@
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 
-// Same-origin pdf OR  URL with  CORS
 interface props {
   pdfUrl: string;
 }
@@ -12,8 +11,6 @@ export default function PdfViewer({ pdfUrl }: props) {
 
   const { systemTheme, resolvedTheme } = useTheme();
   const [isDark, setIsDark] = useState<boolean>(systemTheme === "dark");
-
-  console.log(resolvedTheme);
 
   useEffect(() => {
     setIsDark(systemTheme === "dark");

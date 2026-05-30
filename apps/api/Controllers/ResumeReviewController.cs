@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -5,12 +6,16 @@ using ResumeReview.Api.Dtos.Responses;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Options;
 using ResumeReview.Api.Services;
+using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.ResumeReview;
 
 namespace ResumeReview.Api.Controllers;
 
 [ApiController]
 [Route("api/resume-review")]
+[Route("api/v{version:apiVersion}/resume-review")]
+[ApiVersion("1.0")]
+[AbuseProtectionPolicy(AbuseProtectionPolicyNames.ExpensiveAi)]
 public class ResumeReviewController : ControllerBase
 {
     private readonly IResumeReviewService _resumeReviewService;

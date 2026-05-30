@@ -1,12 +1,17 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Dtos.Responses;
+using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.AtsService.KeywordScoring;
 
 namespace ResumeReview.Api.Controllers;
 
 [ApiController]
 [Route("api/ats-engine")]
+[Route("api/v{version:apiVersion}/ats-engine")]
+[ApiVersion("1.0")]
+[AbuseProtectionPolicy(AbuseProtectionPolicyNames.LocalAts)]
 public sealed class KeywordScoringController : ControllerBase
 {
     private readonly IKeywordScoringService _keywordScoringService;

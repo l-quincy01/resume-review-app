@@ -1,5 +1,8 @@
+using Asp.Versioning;
+using Microsoft.AspNetCore.HttpOverrides;
 using ResumeReview.Api.Options;
 using ResumeReview.Api.Services;
+using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.Ai.Providers.OpenAi;
 using ResumeReview.Api.Services.JobSearchService.Listings;
 using ResumeReview.Api.Services.JobSearchService.Providers.OpenAI;
@@ -44,6 +47,22 @@ try
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
+    builder.Services.AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    }).AddMvc();
+
+    builder.Services.AddHealthChecks();
+    builder.Services.Configure<AbuseProtectionOptions>(
+        builder.Configuration.GetSection(AbuseProtectionOptions.SectionName));
+    builder.Services.AddSingleton<AbuseProtectionLogger>();
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
@@ -141,8 +160,14 @@ try
     });
 
     app.UseHttpsRedirection();
+    app.UseForwardedHeaders();
+    app.UseRouting();
     app.UseCors("Frontend");
+    app.UseMiddleware<RequestSizeLimitMiddleware>();
+    app.UseMiddleware<AbuseProtectionRateLimitMiddleware>();
     app.UseAuthorization();
+    app.MapHealthChecks("/health/live");
+    app.MapHealthChecks("/health/ready");
     app.MapControllers();
 
     app.Run();
@@ -155,3 +180,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program;

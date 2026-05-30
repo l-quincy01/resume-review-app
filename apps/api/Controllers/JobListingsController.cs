@@ -1,12 +1,17 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ResumeReview.Api.Models;
+using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.JobSearchService.Listings;
 
 namespace ResumeReview.Api.Controllers;
 
 [ApiController]
 [Route("api/job-listings")]
+[Route("api/v{version:apiVersion}/job-listings")]
+[ApiVersion("1.0")]
+[AbuseProtectionPolicy(AbuseProtectionPolicyNames.ExpensiveAi)]
 public class JobListingsController : ControllerBase
 {
     private readonly IJobListingsService _jobListingsService;

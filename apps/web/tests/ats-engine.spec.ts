@@ -19,6 +19,7 @@ test.describe("ATS Engine section", () => {
     await page.route("**/api/resume-review/stream", fulfillResumeReviewStream);
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByText("GPT-5 Mini").click();
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications with TypeScript.");
     await page.getByLabel("Upload CV").setInputFiles({
@@ -135,6 +136,7 @@ test.describe("ATS Engine section", () => {
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications with TypeScript.");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
@@ -181,6 +183,7 @@ test.describe("ATS Engine section", () => {
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
       mimeType: "application/pdf",
@@ -209,6 +212,7 @@ test.describe("ATS Engine section", () => {
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build React applications.");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",

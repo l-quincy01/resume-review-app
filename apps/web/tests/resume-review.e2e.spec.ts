@@ -8,17 +8,23 @@ import {
 test.describe("resume review flow", () => {
   test("happy path submits a multipart resume and renders the report", async ({ page }) => {
     let sawMultipartRequest = false;
+    let sawApiKeyHeader = false;
+    let sawApiKeyInBody = false;
 
     await page.route("**/api/resume-review/stream", async (route) => {
       const request = route.request();
+      const body = request.postData() ?? "";
       sawMultipartRequest =
         request.method() === "POST" &&
         (request.headers()["content-type"] ?? "").includes("multipart/form-data");
+      sawApiKeyHeader = request.headers()["x-openai-api-key"] === "sk-test-key";
+      sawApiKeyInBody = body.includes("sk-test-key");
 
       await fulfillResumeReviewStream(route);
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Paste A Job Description For Your Desired Job").fill("Build reliable APIs.");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
@@ -30,6 +36,15 @@ test.describe("resume review flow", () => {
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
     await expect(page.getByText("Jobs To Look Out For")).toBeVisible();
     expect(sawMultipartRequest).toBe(true);
+    expect(sawApiKeyHeader).toBe(true);
+    expect(sawApiKeyInBody).toBe(false);
+    const storageSnapshot = await page.evaluate(() =>
+      JSON.stringify({
+        localStorage: { ...window.localStorage },
+        sessionStorage: { ...window.sessionStorage },
+      }),
+    );
+    expect(storageSnapshot).not.toContain("sk-test-key");
   });
 
   test("failure path shows the API error message and stays on the form", async ({ page }) => {
@@ -51,6 +66,7 @@ test.describe("resume review flow", () => {
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
       mimeType: "application/pdf",
@@ -71,6 +87,7 @@ test.describe("resume review flow", () => {
     });
 
     await page.goto("/resume");
+    await page.getByLabel("OpenAI API Key").fill("sk-test-key");
     await page.getByLabel("Upload CV").setInputFiles({
       name: "resume.pdf",
       mimeType: "application/pdf",

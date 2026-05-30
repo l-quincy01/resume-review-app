@@ -5,6 +5,7 @@ namespace ResumeReview.Api.Services.AtsService.KeywordExtraction;
 public interface IKeywordExtractionService
 {
     Task<KeywordExtractionResponse> ExtractKeywordsAsync(
+        string apiKey,
         string aiModel,
         string jobDescription,
         CancellationToken cancellationToken = default);

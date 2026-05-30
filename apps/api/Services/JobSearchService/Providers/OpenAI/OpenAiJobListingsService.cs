@@ -29,11 +29,10 @@ public class OpenAiJobListingsService : IJobListingsService
         _retryPolicy = retryPolicy;
 
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
     public async Task<JobListings> FindJobListingsAsync(
+        string apiKey,
         string aiModel,
         JobSearchProfile profile,
         CancellationToken cancellationToken = default)
@@ -144,7 +143,13 @@ public class OpenAiJobListingsService : IJobListingsService
                 async token =>
                 {
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    return await _httpClient.PostAsync("responses", content, token);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "responses")
+                    {
+                        Content = content
+                    };
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                    return await _httpClient.SendAsync(request, token);
                 },
                 "job listings search",
                 cancellationToken);

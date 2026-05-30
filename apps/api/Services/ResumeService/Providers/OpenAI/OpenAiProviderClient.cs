@@ -28,11 +28,10 @@ public sealed class OpenAiProviderClient : IAiProviderClient
         _logger = logger;
 
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
     public async Task<string> UploadFileAsync(
+        string apiKey,
         Stream fileStream,
         string fileName,
         string contentType,
@@ -54,7 +53,13 @@ public sealed class OpenAiProviderClient : IAiProviderClient
                 multipart.Add(new StringContent("user_data"), "purpose");
                 multipart.Add(fileContent, "file", fileName);
 
-                return await _httpClient.PostAsync("files", multipart, token);
+                using var request = new HttpRequestMessage(HttpMethod.Post, "files")
+                {
+                    Content = multipart
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                return await _httpClient.SendAsync(request, token);
             },
             "file upload",
             cancellationToken);
@@ -78,11 +83,20 @@ public sealed class OpenAiProviderClient : IAiProviderClient
     }
 
     public async Task DeleteFileAsync(
+        string apiKey,
         string fileId,
         CancellationToken cancellationToken = default)
     {
         using var response = await _retryPolicy.SendAsync(
-            token => _httpClient.DeleteAsync($"files/{Uri.EscapeDataString(fileId)}", token),
+            token =>
+            {
+                var request = new HttpRequestMessage(
+                    HttpMethod.Delete,
+                    $"files/{Uri.EscapeDataString(fileId)}");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                return _httpClient.SendAsync(request, token);
+            },
             "file delete",
             cancellationToken);
         var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -106,6 +120,7 @@ public sealed class OpenAiProviderClient : IAiProviderClient
     }
 
     public async Task<T> SendStructuredRequestAsync<T>(
+        string apiKey,
         string model,
         string fileId,
         string prompt,
@@ -146,7 +161,13 @@ public sealed class OpenAiProviderClient : IAiProviderClient
             async token =>
             {
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                return await _httpClient.PostAsync("responses", content, token);
+                using var request = new HttpRequestMessage(HttpMethod.Post, "responses")
+                {
+                    Content = content
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                return await _httpClient.SendAsync(request, token);
             },
             $"structured request '{schemaName}'",
             cancellationToken);

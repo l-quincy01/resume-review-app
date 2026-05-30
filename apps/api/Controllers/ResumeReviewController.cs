@@ -7,6 +7,7 @@ using ResumeReview.Api.Dtos.Requests;
 using ResumeReview.Api.Options;
 using ResumeReview.Api.Services;
 using ResumeReview.Api.Services.AbuseProtection;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 using ResumeReview.Api.Services.ResumeReview;
 
 namespace ResumeReview.Api.Controllers;
@@ -76,7 +77,12 @@ public class ResumeReviewController : ControllerBase
             });
         }
 
-        var response = await _resumeReviewService.AnalyzeAsync(request, cancellationToken);
+        if (!OpenAiApiKeyProvider.TryGetApiKey(this, out var apiKey, out var apiKeyError))
+        {
+            return apiKeyError!;
+        }
+
+        var response = await _resumeReviewService.AnalyzeAsync(apiKey, request, cancellationToken);
 
         return Ok(response);
     }
@@ -94,6 +100,11 @@ public class ResumeReviewController : ControllerBase
             return validationResult;
         }
 
+        if (!OpenAiApiKeyProvider.TryGetApiKey(this, out var apiKey, out var apiKeyError))
+        {
+            return apiKeyError!;
+        }
+
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
@@ -101,7 +112,7 @@ public class ResumeReviewController : ControllerBase
 
         try
         {
-            await foreach (var streamEvent in _resumeReviewService.AnalyzeStreamAsync(request, cancellationToken))
+            await foreach (var streamEvent in _resumeReviewService.AnalyzeStreamAsync(apiKey, request, cancellationToken))
             {
                 await WriteSseEventAsync(streamEvent, cancellationToken);
             }

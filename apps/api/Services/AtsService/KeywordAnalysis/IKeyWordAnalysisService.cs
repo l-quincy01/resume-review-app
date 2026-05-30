@@ -5,9 +5,9 @@ namespace ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 public interface IKeywordAnalysisService
 {
     Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
+        string apiKey,
         string aiModel,
         KeywordExtractionResponse keywords,
         string resumeText,
         CancellationToken cancellationToken = default);
 }
-

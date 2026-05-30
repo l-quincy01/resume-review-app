@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ResumeReview.Api.Models;
 using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.JobSearchService.Listings;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 
 namespace ResumeReview.Api.Controllers;
 
@@ -28,7 +29,7 @@ public class JobListingsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(JobListings), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<JobListings>> GetJobListings(
+    public async Task<IActionResult> GetJobListings(
         [FromBody] JobSearchProfile profile,
         CancellationToken cancellationToken)
     {
@@ -45,9 +46,15 @@ public class JobListingsController : ControllerBase
             return BadRequest("At least one title or keyword is required.");
         }
 
+        if (!OpenAiApiKeyProvider.TryGetApiKey(this, out var apiKey, out var apiKeyError))
+        {
+            return apiKeyError!;
+        }
+
         try
         {
             var result = await _jobListingsService.FindJobListingsAsync(
+                apiKey,
                 "gpt-5",
                 profile,
                 cancellationToken);

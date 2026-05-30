@@ -15,6 +15,7 @@ public class ResumeAnalysisServicePrivacyTests
         var service = CreateService(provider);
 
         await service.AnalyzeResumeAsync(
+            "user-test-key",
             "gpt-4.1-mini",
             new MemoryStream([1, 2, 3]),
             "resume.pdf",
@@ -35,6 +36,7 @@ public class ResumeAnalysisServicePrivacyTests
         var service = CreateService(provider);
 
         var response = await service.AnalyzeResumeAsync(
+            "user-test-key",
             "gpt-4.1-mini",
             new MemoryStream([1, 2, 3]),
             "resume.pdf",
@@ -57,6 +59,7 @@ public class ResumeAnalysisServicePrivacyTests
         var service = CreateService(provider, logger);
 
         var response = await service.AnalyzeResumeAsync(
+            "user-test-key",
             "gpt-4.1-mini",
             new MemoryStream([1, 2, 3]),
             "resume.pdf",
@@ -76,6 +79,7 @@ public class ResumeAnalysisServicePrivacyTests
         var service = CreateService(provider);
 
         var events = await CollectEventsAsync(service.AnalyzeResumeStreamAsync(
+            "user-test-key",
             "gpt-4.1-mini",
             new MemoryStream([1, 2, 3]),
             "resume.pdf",
@@ -105,6 +109,7 @@ public class ResumeAnalysisServicePrivacyTests
         var service = CreateService(provider);
 
         var events = await CollectEventsAsync(service.AnalyzeResumeStreamAsync(
+            "user-test-key",
             "gpt-4.1-mini",
             new MemoryStream([1, 2, 3]),
             "resume.pdf",
@@ -155,6 +160,7 @@ public class ResumeAnalysisServicePrivacyTests
         public List<string> DeletedFileIds { get; } = [];
 
         public Task<string> UploadFileAsync(
+            string apiKey,
             Stream fileStream,
             string fileName,
             string contentType,
@@ -164,6 +170,7 @@ public class ResumeAnalysisServicePrivacyTests
         }
 
         public Task DeleteFileAsync(
+            string apiKey,
             string fileId,
             CancellationToken cancellationToken = default)
         {
@@ -178,6 +185,7 @@ public class ResumeAnalysisServicePrivacyTests
         }
 
         public Task<T> SendStructuredRequestAsync<T>(
+            string apiKey,
             string model,
             string fileId,
             string prompt,

@@ -20,6 +20,7 @@ public class OpenAiProviderClientPrivacyTests
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             client.UploadFileAsync(
+                "user-test-key",
                 new MemoryStream([1, 2, 3]),
                 "resume.pdf",
                 "application/pdf",
@@ -42,6 +43,7 @@ public class OpenAiProviderClientPrivacyTests
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             client.SendStructuredRequestAsync<object>(
+                "user-test-key",
                 "gpt-4.1-mini",
                 "file-test",
                 "prompt",
@@ -54,9 +56,50 @@ public class OpenAiProviderClientPrivacyTests
         Assert.Contains(logger.Entries, entry => entry.Message.Contains("ResponseBodyLength"));
     }
 
+    [Fact]
+    public async Task SendStructuredRequestAsync_UsesProvidedApiKeyForAuthorizationHeader()
+    {
+        var responseBody = """
+        {
+          "output": [
+            {
+              "type": "message",
+              "content": [
+                { "type": "output_text", "text": "{}" }
+              ]
+            }
+          ]
+        }
+        """;
+        var handler = new StubHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseBody)
+        });
+        var client = CreateClient(new ListLogger<OpenAiProviderClient>(), handler);
+
+        await client.SendStructuredRequestAsync<object>(
+            "user-test-key",
+            "gpt-4.1-mini",
+            "file-test",
+            "prompt",
+            "schema",
+            new { type = "object" },
+            CancellationToken.None);
+
+        Assert.Equal("Bearer", handler.LastAuthorizationScheme);
+        Assert.Equal("user-test-key", handler.LastAuthorizationParameter);
+    }
+
     private static OpenAiProviderClient CreateClient(
         ILogger<OpenAiProviderClient> logger,
         HttpResponseMessage response)
+    {
+        return CreateClient(logger, new StubHttpMessageHandler(response));
+    }
+
+    private static OpenAiProviderClient CreateClient(
+        ILogger<OpenAiProviderClient> logger,
+        HttpMessageHandler handler)
     {
         var options = Microsoft.Extensions.Options.Options.Create(new OpenAiOptions
         {
@@ -69,7 +112,7 @@ public class OpenAiProviderClientPrivacyTests
             new ListLogger<OpenAiRetryPolicy>());
 
         return new OpenAiProviderClient(
-            new HttpClient(new StubHttpMessageHandler(response)),
+            new HttpClient(handler),
             options,
             retryPolicy,
             logger);
@@ -78,6 +121,9 @@ public class OpenAiProviderClientPrivacyTests
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly HttpResponseMessage _response;
+
+        public string? LastAuthorizationScheme { get; private set; }
+        public string? LastAuthorizationParameter { get; private set; }
 
         public StubHttpMessageHandler(HttpResponseMessage response)
         {
@@ -88,6 +134,9 @@ public class OpenAiProviderClientPrivacyTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            LastAuthorizationScheme = request.Headers.Authorization?.Scheme;
+            LastAuthorizationParameter = request.Headers.Authorization?.Parameter;
+
             return Task.FromResult(_response);
         }
     }

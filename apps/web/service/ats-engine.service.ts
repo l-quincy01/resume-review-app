@@ -11,6 +11,7 @@ import {
 
 export type RunAtsEngineInput = {
   aiModel: string;
+  openAiApiKey: string;
   resumeFile: File;
   jobDescription: string;
   onStageChange?: (stage: AtsEngineStage) => void;
@@ -35,11 +36,13 @@ async function postJson<TResponse>(
   path: string,
   body: unknown,
   fallbackError: string,
+  openAiApiKey?: string,
 ): Promise<TResponse> {
   const response = await fetch(apiUrl(path), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(openAiApiKey ? { "X-OpenAI-Api-Key": openAiApiKey } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -55,9 +58,13 @@ async function postForm<TResponse>(
   path: string,
   formData: FormData,
   fallbackError: string,
+  openAiApiKey?: string,
 ): Promise<TResponse> {
   const response = await fetch(apiUrl(path), {
     method: "POST",
+    headers: {
+      ...(openAiApiKey ? { "X-OpenAI-Api-Key": openAiApiKey } : {}),
+    },
     body: formData,
   });
 
@@ -70,6 +77,7 @@ async function postForm<TResponse>(
 
 export async function runAtsEngine({
   aiModel,
+  openAiApiKey,
   resumeFile,
   jobDescription,
   onStageChange,
@@ -111,6 +119,7 @@ export async function runAtsEngine({
       ai_model: aiModel,
     },
     "Keyword extraction failed.",
+    openAiApiKey,
   ).then((keywordExtraction) => {
     partialResult.keywordExtraction = keywordExtraction;
     onStageCompleted?.("keyword-extraction", keywordExtraction, {
@@ -134,6 +143,7 @@ export async function runAtsEngine({
     "/api/ats-engine/keyword-analysis",
     contextualFormData,
     "Keyword analysis failed.",
+    openAiApiKey,
   );
   partialResult.contextualScoring = contextualScoring;
   onStageCompleted?.("keyword-analysis", contextualScoring, {

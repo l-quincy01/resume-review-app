@@ -126,6 +126,7 @@ public class KeywordAnalysisControllerTests
             }
         };
         var controller = CreateController(extractor: extractor, service: service);
+        AddOpenAiApiKeyHeader(controller);
         var request = CreateRequest();
 
         var result = await controller.ScoreKeywords(request, CancellationToken.None);
@@ -140,6 +141,19 @@ public class KeywordAnalysisControllerTests
     }
 
     [Fact]
+    public async Task ScoreKeywords_RejectsMissingOpenAiApiKey()
+    {
+        var controller = CreateController();
+        AddHttpContext(controller);
+        var request = CreateRequest();
+
+        var result = await controller.ScoreKeywords(request, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("OpenAI API key is required", badRequest.Value!.ToString());
+    }
+
+    [Fact]
     public async Task ScoreKeywords_ServiceFailureReturnsBadGatewayWithoutLoggingRawInputs()
     {
         const string resumeText = "SENSITIVE_RESUME_TEXT";
@@ -149,6 +163,7 @@ public class KeywordAnalysisControllerTests
             extractor: new StubResumeTextExtractor(resumeText),
             service: new StubContextualKeywordScoringService { ThrowOnCall = true },
             logger: logger);
+        AddOpenAiApiKeyHeader(controller);
         var request = CreateRequest(keywordsJson: keywordsJson);
 
         var result = await controller.ScoreKeywords(request, CancellationToken.None);
@@ -249,15 +264,18 @@ public class KeywordAnalysisControllerTests
         public KeywordAnalysisResponse Response { get; set; } = new();
         public bool ThrowOnCall { get; set; }
         public string? LastModel { get; private set; }
+        public string? LastApiKey { get; private set; }
         public KeywordExtractionResponse? LastKeywords { get; private set; }
         public string? LastResumeText { get; private set; }
 
         public Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
+            string apiKey,
             string aiModel,
             KeywordExtractionResponse keywords,
             string resumeText,
             CancellationToken cancellationToken = default)
         {
+            LastApiKey = apiKey;
             LastModel = aiModel;
             LastKeywords = keywords;
             LastResumeText = resumeText;
@@ -269,5 +287,19 @@ public class KeywordAnalysisControllerTests
 
             return Task.FromResult(Response);
         }
+    }
+
+    private static void AddOpenAiApiKeyHeader(ControllerBase controller)
+    {
+        AddHttpContext(controller);
+        controller.Request.Headers["X-OpenAI-Api-Key"] = "user-test-key";
+    }
+
+    private static void AddHttpContext(ControllerBase controller)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 }

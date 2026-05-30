@@ -20,6 +20,7 @@ public class OpenAiKeywordAnalysisServiceTests
         var service = CreateService(handler, batchSize: 10);
 
         var result = await service.ScoreKeywordsAsync(
+            "user-test-key",
             "gpt-5-mini",
             CreateKeywords(40),
             "Work Experience\nBuilt Keyword 0 systems.",
@@ -38,6 +39,7 @@ public class OpenAiKeywordAnalysisServiceTests
         var service = CreateService(handler, batchSize: 10, logger: logger);
 
         var result = await service.ScoreKeywordsAsync(
+            "user-test-key",
             "gpt-5-mini",
             CreateKeywords(25),
             "Work Experience\nBuilt Keyword 0 systems.",

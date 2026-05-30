@@ -20,6 +20,12 @@ type CheckJobListings = {
   setCheckJobListings: (value: boolean) => void;
 };
 
+type OpenAiApiKeyState = {
+  openAiApiKey: string;
+  setOpenAiApiKey: (value: string) => void;
+  clearOpenAiApiKey: () => void;
+};
+
 export const useAIModelStore = create<AIModelState>((set) => ({
   aiModel: "gpt-4.1-mini",
   setAIModel: (model) => set({ aiModel: model }),
@@ -38,4 +44,10 @@ export const useResumeFileStore = create<ResumeFileState>((set) => ({
 export const useCheckJobListings = create<CheckJobListings>((set) => ({
   checkJobListings: false,
   setCheckJobListings: (check) => set({ checkJobListings: check }),
+}));
+
+export const useOpenAiApiKeyStore = create<OpenAiApiKeyState>((set) => ({
+  openAiApiKey: "",
+  setOpenAiApiKey: (value) => set({ openAiApiKey: value }),
+  clearOpenAiApiKey: () => set({ openAiApiKey: "" }),
 }));

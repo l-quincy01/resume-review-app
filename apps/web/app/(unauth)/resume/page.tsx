@@ -11,6 +11,7 @@ import {
   useAIModelStore,
   useCheckJobListings,
   useJobDescriptionStore,
+  useOpenAiApiKeyStore,
   useResumeFileStore,
 } from "@/stores/store";
 import { submitResumeReviewStream } from "@/service/resume-review.service";
@@ -61,8 +62,10 @@ export default function Page() {
   const [isResumeReviewComplete, setIsResumeReviewComplete] = useState(false);
   const [resumeReviewCompletedSections, setResumeReviewCompletedSections] =
     useState<ResumeReviewStreamSection[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const aiModel = useAIModelStore((state) => state.aiModel);
+  const openAiApiKey = useOpenAiApiKeyStore((state) => state.openAiApiKey);
 
   const jobDescription = useJobDescriptionStore(
     (state) => state.jobDescription,
@@ -82,6 +85,12 @@ export default function Page() {
   const setResumeFile = useResumeFileStore((state) => state.setResumeFile);
 
   const shouldWarnBeforeUnload = !!reportData && !isSubmitting;
+
+  useEffect(() => {
+    if (openAiApiKey.trim()) {
+      setSubmitError(null);
+    }
+  }, [openAiApiKey]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -106,6 +115,12 @@ export default function Page() {
   }, [resumeFile]);
 
   const handleSubmit = async () => {
+    const trimmedOpenAiApiKey = openAiApiKey.trim();
+    if (!trimmedOpenAiApiKey) {
+      setSubmitError("OpenAI API key is required before submitting.");
+      return;
+    }
+
     if (!resumeFile) {
       alert("Please upload your resume PDF.");
       return;
@@ -129,9 +144,11 @@ export default function Page() {
       setResumeReviewCompletedSections([]);
       setProgress(0);
       setIsLoadingJobListings(false);
+      setSubmitError(null);
 
       const atsEnginePromise = runAtsEngine({
         aiModel,
+        openAiApiKey: trimmedOpenAiApiKey,
         resumeFile,
         jobDescription,
         onStageChange: (stage) => {
@@ -191,6 +208,7 @@ export default function Page() {
 
       const resumeReviewPromise = submitResumeReviewStream({
         aiModel,
+        openAiApiKey: trimmedOpenAiApiKey,
         resumeFile,
         jobDescription,
         onSectionStarted: (section) => {
@@ -255,6 +273,8 @@ export default function Page() {
   const submitJobListingsSearch = useCallback(
     async (profile: ResumeAnalysisResponse["jobSearchProfile"]) => {
       if (!profile) return;
+      const trimmedOpenAiApiKey = openAiApiKey.trim();
+      if (!trimmedOpenAiApiKey) return;
 
       try {
         setIsLoadingJobListings(true);
@@ -263,6 +283,7 @@ export default function Page() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-OpenAI-Api-Key": trimmedOpenAiApiKey,
           },
           body: JSON.stringify(profile),
         });
@@ -286,7 +307,7 @@ export default function Page() {
         setIsLoadingJobListings(false);
       }
     },
-    [],
+    [openAiApiKey],
   );
 
   useEffect(() => {
@@ -356,6 +377,8 @@ export default function Page() {
               resumeFile={resumeFile}
               handleSubmit={handleSubmit}
               isSubmitting={isSubmitting}
+              isSubmitDisabled={!openAiApiKey.trim()}
+              submitError={submitError}
             />
           </div>
         ) : (

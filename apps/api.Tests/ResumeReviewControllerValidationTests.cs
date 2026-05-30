@@ -88,6 +88,7 @@ public class ResumeReviewControllerValidationTests
     {
         var service = new RecordingResumeReviewService();
         var controller = CreateController(service: service);
+        AddOpenAiApiKeyHeader(controller);
         var request = new ResumeReviewRequest
         {
             AiModel = "gpt-4.1-mini",
@@ -101,6 +102,40 @@ public class ResumeReviewControllerValidationTests
         Assert.True(service.WasCalled);
         Assert.Equal("resume.pdf", service.LastRequest?.Resume.FileName);
         Assert.Equal("Build APIs", service.LastRequest?.JobDescription);
+    }
+
+    [Fact]
+    public async Task Submit_RejectsMissingOpenAiApiKey()
+    {
+        var controller = CreateController();
+        AddHttpContext(controller);
+        var request = new ResumeReviewRequest
+        {
+            AiModel = "gpt-4.1-mini",
+            Resume = CreateFile("resume.pdf", "application/pdf", 32)
+        };
+
+        var result = await controller.Submit(request, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("OpenAI API key is required", badRequest.Value!.ToString());
+    }
+
+    [Fact]
+    public async Task Stream_RejectsMissingOpenAiApiKey()
+    {
+        var controller = CreateController();
+        AddHttpContext(controller);
+        var request = new ResumeReviewRequest
+        {
+            AiModel = "gpt-4.1-mini",
+            Resume = CreateFile("resume.pdf", "application/pdf", 32)
+        };
+
+        var result = await controller.Stream(request, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("OpenAI API key is required", badRequest.Value!.ToString());
     }
 
     private static ResumeReviewController CreateController(
@@ -136,21 +171,27 @@ public class ResumeReviewControllerValidationTests
         public bool WasCalled { get; private set; }
         public ResumeReviewRequest? LastRequest { get; private set; }
 
+        public string? LastApiKey { get; private set; }
+
         public Task<ResumeReviewResponse> AnalyzeAsync(
+            string apiKey,
             ResumeReviewRequest request,
             CancellationToken cancellationToken)
         {
             WasCalled = true;
+            LastApiKey = apiKey;
             LastRequest = request;
 
             return Task.FromResult(new ResumeReviewResponse());
         }
 
         public async IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeStreamAsync(
+            string apiKey,
             ResumeReviewRequest request,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             WasCalled = true;
+            LastApiKey = apiKey;
             LastRequest = request;
 
             yield return new ResumeReviewStreamEnvelope
@@ -164,5 +205,19 @@ public class ResumeReviewControllerValidationTests
 
             await Task.CompletedTask;
         }
+    }
+
+    private static void AddOpenAiApiKeyHeader(ControllerBase controller)
+    {
+        AddHttpContext(controller);
+        controller.Request.Headers["X-OpenAI-Api-Key"] = "user-test-key";
+    }
+
+    private static void AddHttpContext(ControllerBase controller)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 }

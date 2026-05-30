@@ -28,6 +28,9 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var isLocalDevelopment =
+        builder.Environment.IsDevelopment() ||
+        builder.Environment.IsEnvironment("DockerLocal");
     var openAiOptions = builder.Configuration
         .GetSection(OpenAiOptions.SectionName)
         .Get<OpenAiOptions>() ?? new OpenAiOptions();
@@ -117,7 +120,7 @@ try
             .Get<string[]>()
         ?? [];
 
-    if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+    if (allowedOrigins.Length == 0 && isLocalDevelopment)
     {
         allowedOrigins = ["http://localhost:3000"];
     }
@@ -133,7 +136,7 @@ try
         throw new InvalidOperationException("Cors:AllowedOrigins must not contain wildcard origins.");
     }
 
-    if (!builder.Environment.IsDevelopment())
+    if (!isLocalDevelopment)
     {
         foreach (var origin in allowedOrigins)
         {
@@ -167,7 +170,11 @@ try
 
     app.UseForwardedHeaders();
 
-    if (!app.Environment.IsDevelopment())
+    var isLocalRuntime =
+        app.Environment.IsDevelopment() ||
+        app.Environment.IsEnvironment("DockerLocal");
+
+    if (!isLocalRuntime)
     {
         app.UseHsts();
         app.UseHttpsRedirection();

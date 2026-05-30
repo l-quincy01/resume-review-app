@@ -180,6 +180,37 @@ public sealed class ApiInfrastructureEndpointsTests
     }
 
     [Fact]
+    public async Task DockerLocal_AllowsLocalhostHttpCorsOrigin()
+    {
+        using var factory = CreateDockerLocalFactory();
+        using var client = CreateClient(factory);
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/resume-review");
+        request.Headers.Add("Origin", "http://localhost:3000");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", ["content-type", "x-openai-api-key"]);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(
+            "http://localhost:3000",
+            response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+    }
+
+    [Fact]
+    public void Production_RejectsHttpCorsOrigin()
+    {
+        using var factory = CreateProductionFactory(new Dictionary<string, string?>
+        {
+            ["Cors:AllowedOrigins:0"] = "http://localhost:3000"
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => CreateClient(factory));
+
+        Assert.Contains("entry point exited", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task OpenAiApiKeyHeaderRedactionMiddleware_RedactsHeaderForDownstreamReaders()
     {
         var context = new DefaultHttpContext();
@@ -214,18 +245,44 @@ public sealed class ApiInfrastructureEndpointsTests
 
     private static WebApplicationFactory<Program> CreateProductionFactory()
     {
+        return CreateProductionFactory(new Dictionary<string, string?>
+        {
+            ["Cors:AllowedOrigins:0"] = "https://frontend.example",
+            ["AllowedHosts"] = "api.example"
+        });
+    }
+
+    private static WebApplicationFactory<Program> CreateProductionFactory(
+        Dictionary<string, string?> configuration)
+    {
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Production");
-                builder.UseSetting("Cors:AllowedOrigins:0", "https://frontend.example");
-                builder.UseSetting("AllowedHosts", "api.example");
+                foreach (var setting in configuration)
+                {
+                    builder.UseSetting(setting.Key, setting.Value);
+                }
+
+                builder.ConfigureAppConfiguration((_, configBuilder) =>
+                {
+                    configBuilder.AddInMemoryCollection(configuration);
+                });
+            });
+    }
+
+    private static WebApplicationFactory<Program> CreateDockerLocalFactory()
+    {
+        return new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("DockerLocal");
                 builder.ConfigureAppConfiguration((_, configBuilder) =>
                 {
                     configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Cors:AllowedOrigins:0"] = "https://frontend.example",
-                        ["AllowedHosts"] = "api.example"
+                        ["Cors:AllowedOrigins:0"] = "http://localhost:3000",
+                        ["AllowedHosts"] = "*"
                     });
                 });
             });

@@ -31,7 +31,10 @@ export default function AtsHeaderValidationSummary({
   );
 
   return (
-    <div className="flex flex-col gap-3" data-testid="ats-header-validation-summary">
+    <div
+      className="flex flex-col gap-3"
+      data-testid="ats-header-validation-summary"
+    >
       <Accordion
         type="multiple"
         defaultValue={["default"]}
@@ -88,20 +91,23 @@ export default function AtsHeaderValidationSummary({
                 </div>
               )}
 
-            <div className="flex flex-col gap-4 rounded-md border p-3 text-sm">
-              <div className="font-semibold">High Priority Fix</div>
+            {missingCriticalHeaders.length > 0 && (
+              <div className="flex flex-col gap-4 rounded-md border p-3 text-sm">
+                <div className="font-semibold">High Priority Fix</div>
 
-              <div className="text-muted-foreground">
-                Include:
-                <span
-                  className={`rounded-2xl  w-fit  px-2.5 py-1 text-sm font-semibold  bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mx-2 `}
-                >
-                  {missingCriticalHeaders.join(", ")}
-                </span>
-                as {missingCriticalHeaders.length > 1 ? "headers" : "a header"}{" "}
-                in your resume.
+                <div className="text-muted-foreground">
+                  Include:
+                  <span
+                    className={`rounded-2xl  w-fit  px-2.5 py-1 text-sm font-semibold  bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mx-2 `}
+                  >
+                    {missingCriticalHeaders.join(", ")}
+                  </span>
+                  as{" "}
+                  {missingCriticalHeaders.length > 1 ? "headers" : "a header"}{" "}
+                  in your resume.
+                </div>
               </div>
-            </div>
+            )}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

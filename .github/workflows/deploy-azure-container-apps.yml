@@ -1,0 +1,215 @@
+name: Deploy Azure Container Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/api/**
+      - apps/web/**
+      - packages/**
+      - infra/azure-container-apps/**
+      - scripts/security/check-edge-key-redaction.sh
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
+      - resume-tracker.sln
+      - .github/workflows/deploy-azure-container-apps.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-azure-container-apps-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+  AZURE_CONTAINER_REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+  AZURE_CONTAINER_APP_ENV: ${{ vars.AZURE_CONTAINER_APP_ENV }}
+  AZURE_WEB_APP_NAME: ${{ vars.AZURE_WEB_APP_NAME }}
+  AZURE_API_APP_NAME: ${{ vars.AZURE_API_APP_NAME }}
+  WEB_BASE_URL: ${{ vars.WEB_BASE_URL }}
+  API_BASE_URL: ${{ vars.API_BASE_URL }}
+  API_ALLOWED_HOSTS: ${{ vars.API_ALLOWED_HOSTS }}
+  LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+  EDGE_LOG_SEARCH_COMMAND: ${{ vars.EDGE_LOG_SEARCH_COMMAND }}
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_vars=(
+            AZURE_RESOURCE_GROUP
+            AZURE_CONTAINER_REGISTRY
+            AZURE_CONTAINER_APP_ENV
+            AZURE_WEB_APP_NAME
+            AZURE_API_APP_NAME
+            WEB_BASE_URL
+            API_BASE_URL
+          )
+
+          for name in "${required_vars[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required GitHub Actions variable: ${name}" >&2
+              exit 2
+            fi
+          done
+
+          if [[ "${WEB_BASE_URL}" != https://* ]]; then
+            echo "WEB_BASE_URL must be an HTTPS origin in production." >&2
+            exit 2
+          fi
+
+          if [[ "${API_BASE_URL}" != https://* ]]; then
+            echo "API_BASE_URL must be an HTTPS origin in production." >&2
+            exit 2
+          fi
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Prepare Azure CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          az extension add --name containerapp --upgrade
+
+      - name: Create resource group
+        shell: bash
+        run: |
+          set -euo pipefail
+          az group create \
+            --name "${AZURE_RESOURCE_GROUP}" \
+            --location "${AZURE_LOCATION:-eastus}"
+
+      - name: Deploy foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --template-file infra/azure-container-apps/foundation.bicep \
+            --parameters \
+              location="${AZURE_LOCATION:-eastus}" \
+              registryName="${AZURE_CONTAINER_REGISTRY}" \
+              environmentName="${AZURE_CONTAINER_APP_ENV}"
+
+      - name: Build and push images
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          acr_login_server="$(az acr show \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${AZURE_CONTAINER_REGISTRY}" \
+            --query loginServer \
+            --output tsv)"
+
+          az acr login --name "${AZURE_CONTAINER_REGISTRY}"
+
+          api_image="${acr_login_server}/resume-review-api:${GITHUB_SHA}"
+          web_image="${acr_login_server}/resume-review-web:${GITHUB_SHA}"
+
+          docker build \
+            --file apps/api/Dockerfile \
+            --tag "${api_image}" \
+            .
+
+          docker build \
+            --file apps/web/Dockerfile \
+            --build-arg "NEXT_PUBLIC_API_BASE=${API_BASE_URL}" \
+            --build-arg "LOG_LEVEL=${LOG_LEVEL:-info}" \
+            --tag "${web_image}" \
+            .
+
+          docker push "${api_image}"
+          docker push "${web_image}"
+
+          echo "api-image=${api_image}" >> "${GITHUB_OUTPUT}"
+          echo "web-image=${web_image}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy container apps
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_host="${API_BASE_URL#https://}"
+          api_host="${api_host#http://}"
+          api_host="${api_host%%/*}"
+          allowed_hosts="${API_ALLOWED_HOSTS:-${api_host}}"
+
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --template-file infra/azure-container-apps/container-apps.bicep \
+            --parameters \
+              location="${AZURE_LOCATION:-eastus}" \
+              registryName="${AZURE_CONTAINER_REGISTRY}" \
+              environmentName="${AZURE_CONTAINER_APP_ENV}" \
+              webAppName="${AZURE_WEB_APP_NAME}" \
+              apiAppName="${AZURE_API_APP_NAME}" \
+              webImage="${{ steps.images.outputs.web-image }}" \
+              apiImage="${{ steps.images.outputs.api-image }}" \
+              webBaseUrl="${WEB_BASE_URL}" \
+              apiBaseUrl="${API_BASE_URL}" \
+              apiAllowedHosts="${allowed_hosts}" \
+              logLevel="${LOG_LEVEL:-info}"
+
+      - name: Smoke test deployed apps
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_fqdn="$(az containerapp show \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${AZURE_API_APP_NAME}" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)"
+
+          web_fqdn="$(az containerapp show \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${AZURE_WEB_APP_NAME}" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)"
+
+          curl --fail --silent --show-error "https://${api_fqdn}/health/live" >/dev/null
+          curl --fail --silent --show-error "https://${api_fqdn}/health/ready" >/dev/null
+          curl --fail --silent --show-error --head "https://${web_fqdn}" >/dev/null
+
+          echo "API: https://${api_fqdn}"
+          echo "Web: https://${web_fqdn}"
+
+      - name: Check edge API key redaction
+        if: ${{ vars.EDGE_LOG_SEARCH_COMMAND != '' }}
+        shell: bash
+        env:
+          TEST_OPENAI_API_KEY: sk-test-redaction-check
+          LOG_SEARCH_COMMAND: ${{ vars.EDGE_LOG_SEARCH_COMMAND }}
+        run: |
+          set -euo pipefail
+
+          api_fqdn="$(az containerapp show \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${AZURE_API_APP_NAME}" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)"
+
+          API_BASE_URL="https://${api_fqdn}" \
+            bash scripts/security/check-edge-key-redaction.sh

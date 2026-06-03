@@ -1,0 +1,50 @@
+services:
+  api-dev:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    working_dir: /workspace
+    command: >
+      sh -c "dotnet restore apps/api/api.csproj &&
+      dotnet watch run --project apps/api/api.csproj --urls http://0.0.0.0:5053"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:5053
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      Cors__AllowedOrigins__0: http://localhost:3000
+      AllowedHosts: "*"
+    volumes:
+      - .:/workspace
+      - dotnet-nuget:/root/.nuget/packages
+    ports:
+      - "5053:5053"
+
+  web-dev:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: >
+      sh -c "corepack enable &&
+      pnpm config set store-dir /pnpm/store &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter web exec next dev --port 3000 --hostname 0.0.0.0"
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:5053
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WATCHPACK_POLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      - api-dev
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web/node_modules
+      - ui-node-modules:/workspace/packages/ui/node_modules
+    ports:
+      - "3000:3000"
+
+volumes:
+  dotnet-nuget:
+  pnpm-store:
+  root-node-modules:
+  web-node-modules:
+  ui-node-modules:

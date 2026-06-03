@@ -39,6 +39,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
     }
 
     public async Task<ResumeReviewResponse> AnalyzeResumeAsync(
+        string apiKey,
         string aiModel,
         Stream pdfStream,
         string fileName,
@@ -50,6 +51,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         var warnings = new ConcurrentBag<string>();
 
         var fileId = await _aiProvider.UploadFileAsync(
+            apiKey,
             pdfStream,
             fileName,
             contentType ?? "application/pdf",
@@ -59,6 +61,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         {
             var jobRecommendationTask = RunTaskAsync(
                 aiModel,
+                apiKey,
                 fileId,
                 _jobRecommendationTask,
                 "job recommendations",
@@ -68,6 +71,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
             var atsContentTask = RunTaskAsync(
                 aiModel,
+                apiKey,
                 fileId,
                 _atsContentTask,
                 "ATS content",
@@ -77,6 +81,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
             var spellingTask = RunTaskAsync(
                 aiModel,
+                apiKey,
                 fileId,
                 _spellingTask,
                 "spelling and grammar",
@@ -86,6 +91,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
             var jobSearchProfileTask = RunTaskAsync(
                 aiModel,
+                apiKey,
                 fileId,
                 _jobSearchProfileTask,
                 "job search profile",
@@ -110,11 +116,12 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         }
         finally
         {
-            await CleanupUploadedFileAsync(fileId, cancellationToken);
+            await CleanupUploadedFileAsync(apiKey, fileId, cancellationToken);
         }
     }
 
     public async IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeResumeStreamAsync(
+        string apiKey,
         string aiModel,
         Stream pdfStream,
         string fileName,
@@ -130,6 +137,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         yield return CreateEvent("review_started", null, null, null, completedSections);
 
         var fileId = await _aiProvider.UploadFileAsync(
+            apiKey,
             pdfStream,
             fileName,
             contentType ?? "application/pdf",
@@ -144,6 +152,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                     "job recommendations",
                     RunStreamTaskAsync(
                         aiModel,
+                        apiKey,
                         fileId,
                         _jobRecommendationTask,
                         "job recommendations",
@@ -155,6 +164,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                     "ATS content",
                     RunStreamTaskAsync(
                         aiModel,
+                        apiKey,
                         fileId,
                         _atsContentTask,
                         "ATS content",
@@ -166,6 +176,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                     "spelling and grammar",
                     RunStreamTaskAsync(
                         aiModel,
+                        apiKey,
                         fileId,
                         _spellingTask,
                         "spelling and grammar",
@@ -177,6 +188,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
                     "job search profile",
                     RunStreamTaskAsync(
                         aiModel,
+                        apiKey,
                         fileId,
                         _jobSearchProfileTask,
                         "job search profile",
@@ -226,12 +238,13 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         }
         finally
         {
-            await CleanupUploadedFileAsync(fileId, cancellationToken);
+            await CleanupUploadedFileAsync(apiKey, fileId, cancellationToken);
         }
     }
 
     private async Task<T> RunTaskAsync<T>(
         string aiModel,
+        string apiKey,
         string fileId,
         IAiAnalysisTask<T> task,
         string sectionName,
@@ -243,6 +256,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         try
         {
             return await _aiProvider.SendStructuredRequestAsync<T>(
+                apiKey,
                 aiModel,
                 fileId,
                 task.BuildPrompt(jobDescription),
@@ -265,6 +279,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
 
     private async Task<SectionCompletion> RunStreamTaskAsync<T>(
         string aiModel,
+        string apiKey,
         string fileId,
         IAiAnalysisTask<T> task,
         string sectionName,
@@ -276,6 +291,7 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
         try
         {
             var payload = await _aiProvider.SendStructuredRequestAsync<T>(
+                apiKey,
                 aiModel,
                 fileId,
                 task.BuildPrompt(jobDescription),
@@ -348,12 +364,13 @@ public sealed class ResumeAnalysisService : IAiResumeAnalysisService
     }
 
     private async Task CleanupUploadedFileAsync(
+        string apiKey,
         string fileId,
         CancellationToken cancellationToken)
     {
         try
         {
-            await _aiProvider.DeleteFileAsync(fileId, cancellationToken);
+            await _aiProvider.DeleteFileAsync(apiKey, fileId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

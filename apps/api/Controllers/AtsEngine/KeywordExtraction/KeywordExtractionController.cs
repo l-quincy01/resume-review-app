@@ -11,6 +11,7 @@ using ResumeReview.Api.Services.AtsService.HeaderValidation;
 using ResumeReview.Api.Services.AtsService.KeywordExtraction;
 using ResumeReview.Api.Services.AtsService.KeywordScoring;
 using ResumeReview.Api.Services.AtsService.TextExtraction;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 
 namespace ResumeReview.Api.Controllers;
 
@@ -76,9 +77,15 @@ public sealed class KeywordExtractionController : ControllerBase
             });
         }
 
+        if (!OpenAiApiKeyProvider.TryGetApiKey(this, out var apiKey, out var apiKeyError))
+        {
+            return apiKeyError!;
+        }
+
         try
         {
             var response = await _keywordExtractionService.ExtractKeywordsAsync(
+                apiKey,
                 request.AiModel,
                 request.JobDescription,
                 cancellationToken);

@@ -9,7 +9,7 @@ interface props {
 export default function PdfViewer({ pdfUrl }: props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const { systemTheme, resolvedTheme } = useTheme();
+  const { systemTheme } = useTheme();
   const [isDark, setIsDark] = useState<boolean>(systemTheme === "dark");
 
   useEffect(() => {

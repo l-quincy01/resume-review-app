@@ -35,11 +35,10 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
         _logger = logger;
 
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
     public async Task<KeywordAnalysisResponse> ScoreKeywordsAsync(
+        string apiKey,
         string aiModel,
         KeywordExtractionResponse keywords,
         string resumeText,
@@ -74,6 +73,7 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
                 {
                     var batchResponse = await ScoreKeywordBatchAsync(
                         aiModel,
+                        apiKey,
                         batch,
                         resumeText,
                         batchNumber,
@@ -144,6 +144,7 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
 
     private async Task<KeywordAnalysisResponse> ScoreKeywordBatchAsync(
         string aiModel,
+        string apiKey,
         KeywordExtractionResponse keywords,
         string resumeText,
         int batchNumber,
@@ -184,7 +185,13 @@ public sealed class OpenAiKeywordAnalysisService : IKeywordAnalysisService
             async token =>
             {
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                return await _httpClient.PostAsync("responses", content, token);
+                using var request = new HttpRequestMessage(HttpMethod.Post, "responses")
+                {
+                    Content = content
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                return await _httpClient.SendAsync(request, token);
             },
             $"ATS contextual keyword scoring batch {batchNumber}",
             cancellationToken);

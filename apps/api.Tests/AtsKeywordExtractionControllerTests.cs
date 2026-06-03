@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using ResumeReview.Api.Controllers;
@@ -125,6 +126,7 @@ public class KeywordExtractionControllerTests
             }
         };
         var controller = CreateController(service: service);
+        AddOpenAiApiKeyHeader(controller);
 
         var result = await controller.ExtractKeywords(
             new KeywordExtractionRequest
@@ -142,6 +144,24 @@ public class KeywordExtractionControllerTests
     }
 
     [Fact]
+    public async Task ExtractKeywords_RejectsMissingOpenAiApiKey()
+    {
+        var controller = CreateController();
+        AddHttpContext(controller);
+
+        var result = await controller.ExtractKeywords(
+            new KeywordExtractionRequest
+            {
+                JobDescription = "Build React apps.",
+                AiModel = "gpt-4.1-mini"
+            },
+            CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("OpenAI API key is required", badRequest.Value!.ToString());
+    }
+
+    [Fact]
     public async Task ExtractKeywords_ServiceFailureReturnsBadGatewayWithoutLoggingRawJobDescription()
     {
         const string rawJobDescription = "SENSITIVE_JOB_DESCRIPTION";
@@ -149,6 +169,7 @@ public class KeywordExtractionControllerTests
         var controller = CreateController(
             service: new StubKeywordExtractionService { ThrowOnCall = true },
             logger: logger);
+        AddOpenAiApiKeyHeader(controller);
 
         var result = await controller.ExtractKeywords(
             new KeywordExtractionRequest
@@ -185,13 +206,16 @@ public class KeywordExtractionControllerTests
         public KeywordExtractionResponse Response { get; set; } = new();
         public bool ThrowOnCall { get; set; }
         public string? LastModel { get; private set; }
+        public string? LastApiKey { get; private set; }
         public string? LastJobDescription { get; private set; }
 
         public Task<KeywordExtractionResponse> ExtractKeywordsAsync(
+            string apiKey,
             string aiModel,
             string jobDescription,
             CancellationToken cancellationToken = default)
         {
+            LastApiKey = apiKey;
             LastModel = aiModel;
             LastJobDescription = jobDescription;
 
@@ -202,5 +226,19 @@ public class KeywordExtractionControllerTests
 
             return Task.FromResult(Response);
         }
+    }
+
+    private static void AddOpenAiApiKeyHeader(ControllerBase controller)
+    {
+        AddHttpContext(controller);
+        controller.Request.Headers["X-OpenAI-Api-Key"] = "user-test-key";
+    }
+
+    private static void AddHttpContext(ControllerBase controller)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 }

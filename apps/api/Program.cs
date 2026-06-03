@@ -17,6 +17,7 @@ using ResumeReview.Api.Services.AtsService.TextExtraction;
 using ResumeReview.Api.Services.ResumeReview;
 using ResumeReview.Api.Services.Providers;
 using ResumeReview.Api.Services.Providers.OpenAI;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -27,6 +28,9 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var isLocalDevelopment =
+        builder.Environment.IsDevelopment() ||
+        builder.Environment.IsEnvironment("DockerLocal");
     var openAiOptions = builder.Configuration
         .GetSection(OpenAiOptions.SectionName)
         .Get<OpenAiOptions>() ?? new OpenAiOptions();
@@ -116,7 +120,7 @@ try
             .Get<string[]>()
         ?? [];
 
-    if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+    if (allowedOrigins.Length == 0 && isLocalDevelopment)
     {
         allowedOrigins = ["http://localhost:3000"];
     }
@@ -127,14 +131,32 @@ try
             "Cors:AllowedOrigins must contain at least one origin outside Development.");
     }
 
+    if (allowedOrigins.Any(origin => origin.Contains('*')))
+    {
+        throw new InvalidOperationException("Cors:AllowedOrigins must not contain wildcard origins.");
+    }
+
+    if (!isLocalDevelopment)
+    {
+        foreach (var origin in allowedOrigins)
+        {
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var originUri) ||
+                !string.Equals(originUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Cors:AllowedOrigins must contain only absolute HTTPS origins outside Development.");
+            }
+        }
+    }
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("Frontend", policy =>
         {
             policy
                 .WithOrigins(allowedOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod();
+                .WithHeaders("content-type", OpenAiApiKeyProvider.HeaderName.ToLowerInvariant())
+                .WithMethods("GET", "POST", "OPTIONS");
         });
     });
 
@@ -145,6 +167,20 @@ try
         app.UseSwagger();
         app.UseSwaggerUI();
     }
+
+    app.UseForwardedHeaders();
+
+    var isLocalRuntime =
+        app.Environment.IsDevelopment() ||
+        app.Environment.IsEnvironment("DockerLocal");
+
+    if (!isLocalRuntime)
+    {
+        app.UseHsts();
+        app.UseHttpsRedirection();
+    }
+
+    app.UseMiddleware<OpenAiApiKeyHeaderRedactionMiddleware>();
 
     app.UseSerilogRequestLogging(options =>
     {
@@ -159,8 +195,6 @@ try
         };
     });
 
-    app.UseHttpsRedirection();
-    app.UseForwardedHeaders();
     app.UseRouting();
     app.UseCors("Frontend");
     app.UseMiddleware<RequestSizeLimitMiddleware>();

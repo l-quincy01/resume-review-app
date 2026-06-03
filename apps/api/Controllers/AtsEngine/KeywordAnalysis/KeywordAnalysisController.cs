@@ -8,6 +8,7 @@ using ResumeReview.Api.Options;
 using ResumeReview.Api.Services.AbuseProtection;
 using ResumeReview.Api.Services.AtsService.KeywordAnalysis;
 using ResumeReview.Api.Services.AtsService.TextExtraction;
+using ResumeReview.Api.Services.OpenAiApiKeys;
 
 namespace ResumeReview.Api.Controllers;
 
@@ -92,12 +93,18 @@ public sealed class KeywordAnalysisController : ControllerBase
             return BadRequest(new { message = "keywords_json must contain at least one keyword." });
         }
 
+        if (!OpenAiApiKeyProvider.TryGetApiKey(this, out var apiKey, out var apiKeyError))
+        {
+            return apiKeyError!;
+        }
+
         await using var stream = request.Resume.OpenReadStream();
         var resumeText = await _resumeTextExtractor.ExtractTextAsync(stream, cancellationToken);
 
         try
         {
             var response = await _keywordAnalysisService.ScoreKeywordsAsync(
+                apiKey,
                 request.AiModel,
                 keywords,
                 resumeText,

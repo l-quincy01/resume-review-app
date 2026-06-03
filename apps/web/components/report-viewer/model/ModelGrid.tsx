@@ -2,7 +2,8 @@
 import React from "react";
 
 import clsx from "clsx";
-import { useAIModelStore } from "@/stores/store";
+import { useAIModelStore, useOpenAiApiKeyStore } from "@/stores/store";
+import { Input } from "@/components/ui/input";
 
 const models = [
   {
@@ -30,9 +31,14 @@ const models = [
 export default function ModelGrid() {
   const aiModel = useAIModelStore((state) => state.aiModel);
   const setAIModel = useAIModelStore((state) => state.setAIModel);
+  const openAiApiKey = useOpenAiApiKeyStore((state) => state.openAiApiKey);
+  const setOpenAiApiKey = useOpenAiApiKeyStore(
+    (state) => state.setOpenAiApiKey,
+  );
+  const isApiKeyMissing = openAiApiKey.trim().length === 0;
 
   return (
-    <div className="p-2">
+    <div className="p-2 flex flex-col gap-4 mb-2">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {models.map((model) => {
           const isSelected = aiModel === model.value;
@@ -54,6 +60,29 @@ export default function ModelGrid() {
             </div>
           );
         })}
+      </div>
+
+      <div className="flex flex-col items-start gap-2">
+        <label htmlFor="openai-api-key" className="font-semibold text-sm">
+          OpenAI API Key
+        </label>
+        <Input
+          id="openai-api-key"
+          aria-describedby="openai-api-key-error"
+          aria-invalid={isApiKeyMissing}
+          autoComplete="off"
+          className="rounded-sm"
+          onChange={(event) => setOpenAiApiKey(event.target.value)}
+          placeholder="Enter your OpenAI API key"
+          spellCheck={false}
+          type="password"
+          value={openAiApiKey}
+        />
+        {isApiKeyMissing && (
+          <p id="openai-api-key-error" className="text-destructive text-xs">
+            OpenAI API key is required before submitting.
+          </p>
+        )}
       </div>
     </div>
   );

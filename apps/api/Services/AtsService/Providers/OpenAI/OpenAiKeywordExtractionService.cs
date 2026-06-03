@@ -35,11 +35,10 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
         _logger = logger;
 
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
     public async Task<KeywordExtractionResponse> ExtractKeywordsAsync(
+        string apiKey,
         string aiModel,
         string jobDescription,
         CancellationToken cancellationToken = default)
@@ -77,7 +76,13 @@ public sealed class OpenAiKeywordExtractionService : IKeywordExtractionService
                 async token =>
                 {
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    return await _httpClient.PostAsync("responses", content, token);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "responses")
+                    {
+                        Content = content
+                    };
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                    return await _httpClient.SendAsync(request, token);
                 },
                 "ATS keyword extraction",
                 cancellationToken);

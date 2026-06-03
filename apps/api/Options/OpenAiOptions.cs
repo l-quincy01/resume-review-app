@@ -6,7 +6,7 @@ public class OpenAiOptions
 
     public string ApiKey { get; set; } = string.Empty;
     public string DefaultModel { get; set; } = "gpt-4.1-mini";
-    public string JobListingsModel { get; set; } = "gpt-5-nano";
+    public string JobListingsModel { get; set; } = "gpt-5";
     public string[] AllowedModels { get; set; } = ["gpt-4.1-mini", "gpt-5-mini", "gpt-5.4", "chat-latest", "gpt-5-nano"];
     public int RequestTimeoutSeconds { get; set; } = 180;
     public int JobListingsTimeoutSeconds { get; set; } = 180;

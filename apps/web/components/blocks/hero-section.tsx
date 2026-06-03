@@ -137,7 +137,7 @@ export function HeroSection() {
     <>
       <main className="overflow-hidden bg-background">
         <section className="relative">
-          <div className="absolute inset-x-0 top-0 -z-10 h-[32rem] bg-gradient-to-b from-muted/40 via-background to-background" />
+          <div className="absolute inset-x-0 top-0 -z-10 h-128 bg-linear-to-b from-muted/40 via-background to-background" />
 
           <div className="space-y-12 sm:space-y-24 md:space-y-36  pt-12 md:pt-24 pb-0 flex flex-col items-center ">
             <div className="max-w-7xl grid items-center gap-14 pt-12 lg:grid-cols-2 lg:pt-20 px-12 xl:px-0 ">
@@ -188,14 +188,14 @@ export function HeroSection() {
                   <div className="absolute -inset-4 -z-10 rounded-[2rem] bg-muted/40 blur-2xl" />
                   <div className="relative overflow-hidden ">
                     <Image
-                      className="hidden aspect-[15/8] rounded-[1.25rem] object-cover dark:block"
+                      className="hidden aspect-15/8 rounded-[1.25rem] object-cover dark:block"
                       src="/hero-banner-dark.png"
                       alt="Resume review dashboard preview"
                       width={2700}
                       height={1440}
                     />
                     <Image
-                      className="aspect-[15/8] rounded-[1.25rem]  object-cover dark:hidden"
+                      className="aspect-15/8 rounded-[1.25rem]  object-cover dark:hidden"
                       src="/hero-banner.png"
                       alt="Resume review dashboard preview"
                       width={2700}

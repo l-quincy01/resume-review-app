@@ -18,6 +18,8 @@ interface ResumeReviewFormProps {
   resumeFile: File | null;
   handleSubmit: () => void;
   isSubmitting?: boolean;
+  isSubmitDisabled?: boolean;
+  submitError?: string | null;
 }
 
 export default function ResumeReviewForm({
@@ -30,6 +32,8 @@ export default function ResumeReviewForm({
   resumeFile,
   handleSubmit,
   isSubmitting = false,
+  isSubmitDisabled = false,
+  submitError,
 }: ResumeReviewFormProps) {
   return (
     <div className="flex flex-col gap-2 items-end">
@@ -89,7 +93,17 @@ export default function ResumeReviewForm({
         </div>
       </Field>
 
-      <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+      {submitError && (
+        <p className="text-destructive text-sm" role="alert">
+          {submitError}
+        </p>
+      )}
+
+      <Button
+        type="button"
+        onClick={handleSubmit}
+        disabled={isSubmitting || isSubmitDisabled}
+      >
         {isSubmitting ? "Submitting..." : "Submit"}
       </Button>
     </div>

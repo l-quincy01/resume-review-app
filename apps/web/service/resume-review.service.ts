@@ -8,6 +8,7 @@ import { apiUrl } from "@/lib/api";
 
 export type SubmitResumeReviewInput = {
   aiModel: string;
+  openAiApiKey: string;
   resumeFile: File;
   jobDescription?: string;
 };
@@ -27,6 +28,7 @@ export type SubmitResumeReviewStreamInput = SubmitResumeReviewInput & {
 
 export async function submitResumeReview({
   aiModel,
+  openAiApiKey,
   resumeFile,
   jobDescription,
 }: SubmitResumeReviewInput): Promise<ResumeAnalysisResponse> {
@@ -41,6 +43,9 @@ export async function submitResumeReview({
 
   const response = await fetch(apiUrl("/api/resume-review"), {
     method: "POST",
+    headers: {
+      "X-OpenAI-Api-Key": openAiApiKey,
+    },
     body: formData,
   });
 
@@ -62,6 +67,7 @@ export async function submitResumeReview({
 
 export async function submitResumeReviewStream({
   aiModel,
+  openAiApiKey,
   resumeFile,
   jobDescription,
   onSectionStarted,
@@ -77,6 +83,9 @@ export async function submitResumeReviewStream({
 
   const response = await fetch(apiUrl("/api/resume-review/stream"), {
     method: "POST",
+    headers: {
+      "X-OpenAI-Api-Key": openAiApiKey,
+    },
     body: formData,
   });
 
@@ -132,7 +141,7 @@ function buildResumeReviewFormData({
   aiModel,
   resumeFile,
   jobDescription,
-}: SubmitResumeReviewInput) {
+}: Omit<SubmitResumeReviewInput, "openAiApiKey">) {
   const formData = new FormData();
 
   formData.append("aiModel", aiModel);

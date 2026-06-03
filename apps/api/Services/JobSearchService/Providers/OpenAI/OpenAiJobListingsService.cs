@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -29,20 +30,24 @@ public class OpenAiJobListingsService : IJobListingsService
         _retryPolicy = retryPolicy;
 
         _httpClient.BaseAddress = new Uri("https://api.openai.com/v1/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _options.ApiKey);
     }
 
     public async Task<JobListings> FindJobListingsAsync(
+        string apiKey,
         string aiModel,
         JobSearchProfile profile,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(aiModel))
+        {
+            throw new ArgumentException("AI model is required.", nameof(aiModel));
+        }
+
         var prompt = BuildJobListingsPrompt(profile);
 
         var requestBody = new Dictionary<string, object?>
         {
-            ["model"] = _options.JobListingsModel,
+            ["model"] = aiModel,
             ["tools"] = new object[]
             {
                 new
@@ -59,6 +64,7 @@ public class OpenAiJobListingsService : IJobListingsService
                     }
                 }
             },
+            ["tool_choice"] = "required",
             ["input"] = new object[]
             {
                 new
@@ -72,7 +78,7 @@ public class OpenAiJobListingsService : IJobListingsService
             },
             ["text"] = new
             {
-                verbosity = OpenAiResponsesRequestFactory.ResolveTextVerbosity(_options.JobListingsModel),
+                verbosity = OpenAiResponsesRequestFactory.ResolveTextVerbosity(aiModel),
                 format = new
                 {
                     type = "json_schema",
@@ -118,15 +124,15 @@ public class OpenAiJobListingsService : IJobListingsService
             }
         };
 
-        if (OpenAiResponsesRequestFactory.SupportsReasoning(_options.JobListingsModel))
+        if (OpenAiResponsesRequestFactory.SupportsReasoning(aiModel))
         {
             requestBody["reasoning"] = new
             {
-                effort = OpenAiResponsesRequestFactory.ResolveReasoningEffort(_options.JobListingsModel)
+                effort = ResolveWebSearchReasoningEffort(aiModel)
             };
         }
 
-        if (OpenAiResponsesRequestFactory.SupportsTemperature(_options.JobListingsModel))
+        if (OpenAiResponsesRequestFactory.SupportsTemperature(aiModel))
         {
             requestBody["temperature"] = 0;
         }
@@ -135,16 +141,26 @@ public class OpenAiJobListingsService : IJobListingsService
         try
         {
             _logger.LogInformation(
-                "Starting job listings search. TitleCount: {TitleCount}, KeywordCount: {KeywordCount}, LocationCount: {LocationCount}.",
+                "Starting job listings search. Model: {Model}. TitleCount: {TitleCount}. KeywordCount: {KeywordCount}. LocationCount: {LocationCount}. ExcludeCount: {ExcludeCount}. HasSeniority: {HasSeniority}. ProfileHash: {ProfileHash}.",
+                aiModel,
                 profile.Titles?.Count ?? 0,
                 profile.Keywords?.Count ?? 0,
-                profile.Locations?.Count ?? 0);
+                profile.Locations?.Count ?? 0,
+                profile.Exclude?.Count ?? 0,
+                !string.IsNullOrWhiteSpace(profile.Seniority),
+                HashProfile(profile));
 
             using var response = await _retryPolicy.SendAsync(
                 async token =>
                 {
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    return await _httpClient.PostAsync("responses", content, token);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "responses")
+                    {
+                        Content = content
+                    };
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                    return await _httpClient.SendAsync(request, token);
                 },
                 "job listings search",
                 cancellationToken);
@@ -154,18 +170,25 @@ public class OpenAiJobListingsService : IJobListingsService
             {
                 var error = OpenAiErrorInfo.Parse(responseText);
                 _logger.LogError(
-                    "OpenAI job listings failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}. ErrorMessage: {ErrorMessage}.",
+                    "OpenAI job listings failed. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}. ErrorType: {ErrorType}. ErrorCode: {ErrorCode}. ErrorParam: {ErrorParam}.",
                     response.StatusCode,
                     responseText.Length,
                     error.Type,
                     error.Code,
-                    error.Param,
-                    error.Message);
+                    error.Param);
 
-                return new JobListings { jobListings = [] };
+                throw new JobListingsProviderException(
+                    $"OpenAI job listings failed: {response.StatusCode}.");
             }
 
             var modelJson = ExtractTextOutput(responseText);
+            _logger.LogInformation(
+                "OpenAI job listings response parsed. Model: {Model}. Status: {Status}. ResponseBodyLength: {ResponseBodyLength}. OutputLength: {OutputLength}. ProfileHash: {ProfileHash}.",
+                aiModel,
+                response.StatusCode,
+                responseText.Length,
+                modelJson.Length,
+                HashProfile(profile));
 
             var result = JsonSerializer.Deserialize<JobListings>(
                 modelJson,
@@ -179,10 +202,15 @@ public class OpenAiJobListingsService : IJobListingsService
                 _logger.LogError(
                     "Job listings deserialization returned null. ModelJsonLength: {ModelJsonLength}.",
                     modelJson.Length);
-                return new JobListings { jobListings = [] };
+                throw new JobListingsProviderException("OpenAI job listings returned an empty result.");
             }
 
-            _logger.LogInformation("Job listings success. Count: {Count}", result.jobListings?.Count ?? 0);
+            _logger.LogInformation(
+                "Job listings success. Model: {Model}. OutputLength: {OutputLength}. Count: {Count}. ProfileHash: {ProfileHash}.",
+                aiModel,
+                modelJson.Length,
+                result.jobListings?.Count ?? 0,
+                HashProfile(profile));
             result.jobListings = (result.jobListings ?? [])
                 .Take(Math.Max(1, _options.MaxJobListings))
                 .ToList();
@@ -192,12 +220,16 @@ public class OpenAiJobListingsService : IJobListingsService
         catch (OperationCanceledException ex)
         {
             _logger.LogWarning(ex, "Job listings request was cancelled by the caller.");
-            return new JobListings { jobListings = [] };
+            throw new JobListingsProviderException("Job listings request was cancelled.", ex);
+        }
+        catch (JobListingsProviderException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Job listings failed unexpectedly.");
-            return new JobListings { jobListings = [] };
+            throw new JobListingsProviderException("Job listings failed unexpectedly.", ex);
         }
     }
 
@@ -239,6 +271,28 @@ DERIVED SEARCH PROFILE:
 
 Return ONLY valid JSON matching the schema.
 """;
+    }
+
+    private static string ResolveWebSearchReasoningEffort(string model)
+    {
+        return model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase)
+            ? "low"
+            : OpenAiResponsesRequestFactory.ResolveReasoningEffort(model);
+    }
+
+    private static string HashProfile(JobSearchProfile profile)
+    {
+        var profileJson = JsonSerializer.Serialize(new
+        {
+            titles = profile.Titles ?? [],
+            keywords = profile.Keywords ?? [],
+            seniority = profile.Seniority ?? string.Empty,
+            locations = profile.Locations ?? [],
+            exclude = profile.Exclude ?? []
+        });
+
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(profileJson));
+        return Convert.ToHexString(hashBytes)[..12];
     }
 
     private static string ExtractTextOutput(string responseJson)

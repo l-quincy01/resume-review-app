@@ -7,6 +7,7 @@ namespace ResumeReview.Api.Services;
 public interface IAiResumeAnalysisService
 {
     Task<ResumeReviewResponse> AnalyzeResumeAsync(
+        string apiKey,
         string aiModel,
         Stream pdfStream,
         string fileName,
@@ -16,6 +17,7 @@ public interface IAiResumeAnalysisService
     );
 
     IAsyncEnumerable<ResumeReviewStreamEnvelope> AnalyzeResumeStreamAsync(
+        string apiKey,
         string aiModel,
         Stream pdfStream,
         string fileName,

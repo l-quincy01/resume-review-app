@@ -51,13 +51,20 @@ AZURE_CONTAINER_REGISTRY=resumereviewprodacr
 AZURE_CONTAINER_APP_ENV=resume-review-prod-env
 AZURE_WEB_APP_NAME=resume-review-web
 AZURE_API_APP_NAME=resume-review-api
-WEB_BASE_URL=https://app.your-domain.com
-API_BASE_URL=https://api.your-domain.com
-API_ALLOWED_HOSTS=api.your-domain.com
 LOG_LEVEL=info
 ```
 
-`WEB_BASE_URL` and `API_BASE_URL` must be HTTPS origins. `NEXT_PUBLIC_API_BASE` is baked into the Next.js image at build time, so rerun the deploy workflow any time the public API URL changes.
+You do not need a custom domain for the first deployment. If `WEB_BASE_URL` and `API_BASE_URL` are omitted, the workflow uses Azure's generated `https://*.azurecontainerapps.io` URLs.
+
+When you add custom domains later, add or update:
+
+```txt
+WEB_BASE_URL=https://app.your-domain.com
+API_BASE_URL=https://api.your-domain.com
+API_ALLOWED_HOSTS=api.your-domain.com
+```
+
+`WEB_BASE_URL` and `API_BASE_URL` must be HTTPS origins when provided. `NEXT_PUBLIC_API_BASE` is baked into the Next.js image at build time, so rerun the deploy workflow any time the public API URL changes.
 
 ## 4. Run The Workflow
 
@@ -67,8 +74,12 @@ The workflow will:
 
 - Create or update the resource group.
 - Deploy Azure Container Registry, Log Analytics, Container Apps environment, and a managed pull identity.
-- Build and push `resume-review-api:<commit-sha>` and `resume-review-web:<commit-sha>`.
-- Deploy or update both Container Apps.
+- Build and push `resume-review-api:<commit-sha>`.
+- Deploy the API once with a temporary HTTPS CORS origin.
+- Read the generated API URL if `API_BASE_URL` is not configured.
+- Build and push `resume-review-web:<commit-sha>` with the resolved API URL.
+- Deploy the web app and read the generated web URL if `WEB_BASE_URL` is not configured.
+- Redeploy the API with the final web CORS origin and API host setting.
 - Smoke test API health endpoints and the web app.
 
 ## 5. Configure Domains
@@ -82,7 +93,7 @@ api.your-domain.com -> resume-review-api
 
 Follow Azure's requested DNS records and enable managed certificates for both domains.
 
-After custom domains are active, confirm the GitHub variables match the final domains and rerun the workflow so the web image is rebuilt with the final `API_BASE_URL`.
+After custom domains are active, confirm the GitHub variables match the final domains and rerun the workflow so the web image is rebuilt with the final `API_BASE_URL` and the API CORS origin is updated to the final `WEB_BASE_URL`.
 
 ## 6. Verify Production Security
 
@@ -94,6 +105,8 @@ ASPNETCORE_URLS=http://0.0.0.0:5053
 Cors__AllowedOrigins__0=https://app.your-domain.com
 AllowedHosts=api.your-domain.com
 ```
+
+If you have not configured custom domains, those values resolve to the generated Azure Container Apps HTTPS hostnames.
 
 Confirm:
 
@@ -111,6 +124,8 @@ curl --fail https://api.your-domain.com/health/live
 curl --fail https://api.your-domain.com/health/ready
 curl --fail --head https://app.your-domain.com
 ```
+
+Without custom domains, use the generated API and web URLs printed by the deploy workflow.
 
 Then test the browser flow:
 

@@ -34,6 +34,25 @@ az ad sp create-for-rbac \
   --sdk-auth
 ```
 
+The deployment also creates an `AcrPull` role assignment for the Container Apps managed identity. `Contributor` cannot create role assignments, so the GitHub service principal also needs one RBAC administration role at the resource group or subscription scope.
+
+After creating the service principal, grant it `User Access Administrator` at the resource group scope from an Azure account that has Owner/User Access Administrator permissions:
+
+```bash
+az role assignment create \
+  --assignee <CLIENT_ID_FROM_AZURE_CREDENTIALS_JSON> \
+  --role "User Access Administrator" \
+  --scope /subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/resume-review-prod-rg
+```
+
+If the resource group does not exist yet, create it first:
+
+```bash
+az group create \
+  --name resume-review-prod-rg \
+  --location westeurope
+```
+
 Save the full JSON output as this GitHub Actions secret:
 
 ```txt

@@ -97,6 +97,43 @@ jobs:
             --name "${AZURE_RESOURCE_GROUP}" \
             --location "${AZURE_LOCATION:-eastus}"
 
+      - name: Validate Azure RBAC permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          subscription_id="$(az account show --query id --output tsv)"
+          resource_group_scope="/subscriptions/${subscription_id}/resourceGroups/${AZURE_RESOURCE_GROUP}"
+          principal_id="$(az ad sp show \
+            --id "$(az account show --query user.name --output tsv)" \
+            --query id \
+            --output tsv)"
+
+          assignment_count="$(az role assignment list \
+            --assignee "${principal_id}" \
+            --scope "${resource_group_scope}" \
+            --include-inherited \
+            --query "[?roleDefinitionName=='Owner' || roleDefinitionName=='User Access Administrator' || roleDefinitionName=='Role Based Access Control Administrator'] | length(@)" \
+            --output tsv)"
+
+          if [[ "${assignment_count}" == "0" ]]; then
+            cat >&2 <<EOF
+          Azure deployment identity is missing permission to create role assignments.
+
+          This workflow deploys a managed identity and assigns it AcrPull on ACR.
+          That requires Microsoft.Authorization/roleAssignments/write.
+
+          Fix this by granting the GitHub service principal one of these roles at the resource group or subscription scope:
+          - Owner
+          - User Access Administrator
+          - Role Based Access Control Administrator
+
+          Current scope checked:
+          ${resource_group_scope}
+          EOF
+            exit 2
+          fi
+
       - name: Deploy foundation
         shell: bash
         run: |

@@ -5,7 +5,7 @@ import Recommendations from "@/components/report-viewer/recommendations/Recommen
 import AtsContent from "@/components/report-viewer/ats/AtsContent";
 import ModelGrid from "@/components/report-viewer/model/ModelGrid";
 import Disclaimer from "@/components/resume/disclaimer";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import RecommendedListings from "@/components/report-viewer/recommendations/RecommendedListings";
 import {
   useAIModelStore,
@@ -29,9 +29,12 @@ import { Progress } from "@/components/ui/progress";
 import ShimmerText from "@/components/ui/shimmer-text";
 import { Typewriter } from "@/components/ui/typewriter";
 import { jobListingWords } from "@/constants/constants";
-import { apiUrl } from "@/lib/api";
 import { clientLogger } from "@/lib/client-logger";
 import { runAtsEngine } from "@/service/ats-engine.service";
+import {
+  hasUsableJobSearchProfile,
+  submitJobListingsSearch,
+} from "@/service/job-listings.service";
 import {
   AtsEnginePipelineResult,
   AtsEngineStage,
@@ -39,16 +42,28 @@ import {
 import AtsEngineResults from "@/components/ats-engine/ats-engine-results";
 import ResumeReviewProgressiveHeader from "@/components/report-viewer/progressive/resume-review-progressive-header";
 
+type JobListingsStatus =
+  | "idle"
+  | "waiting_for_profile"
+  | "loading"
+  | "success"
+  | "empty"
+  | "error";
+
 export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingJobListings, setIsLoadingJobListings] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const [reportData, setReportData] =
     useState<Partial<ResumeAnalysisResponse> | null>(null);
-  const [jobListings, setJobListings] = useState<JobListingsResponse | null>(
-    null,
-  );
+  const [jobSearchProfile, setJobSearchProfile] = useState<
+    ResumeAnalysisResponse["jobSearchProfile"] | null
+  >(null);
+  const [jobListingsStatus, setJobListingsStatus] =
+    useState<JobListingsStatus>("idle");
+  const [jobListingsResult, setJobListingsResult] =
+    useState<JobListingsResponse | null>(null);
+  const [jobListingsError, setJobListingsError] = useState<string | null>(null);
   const [atsEngineResult, setAtsEngineResult] =
     useState<Partial<AtsEnginePipelineResult> | null>(null);
   const [atsEngineError, setAtsEngineError] = useState<string | null>(null);
@@ -63,6 +78,9 @@ export default function Page() {
   const [resumeReviewCompletedSections, setResumeReviewCompletedSections] =
     useState<ResumeReviewStreamSection[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activeReviewRunId, setActiveReviewRunId] = useState(0);
+  const currentReviewRunIdRef = useRef(0);
+  const jobListingsRequestKeyRef = useRef<string | null>(null);
 
   const aiModel = useAIModelStore((state) => state.aiModel);
   const openAiApiKey = useOpenAiApiKeyStore((state) => state.openAiApiKey);
@@ -128,12 +146,19 @@ export default function Page() {
 
     const url = URL.createObjectURL(resumeFile);
     setFileUrl(url);
+    const reviewRunId = currentReviewRunIdRef.current + 1;
+    currentReviewRunIdRef.current = reviewRunId;
+    jobListingsRequestKeyRef.current = null;
+    setActiveReviewRunId(reviewRunId);
 
     try {
       setIsSubmitting(true);
 
       setReportData(null);
-      setJobListings(null);
+      setJobSearchProfile(null);
+      setJobListingsResult(null);
+      setJobListingsError(null);
+      setJobListingsStatus(checkJobListings ? "waiting_for_profile" : "idle");
       setAtsEngineResult(null);
       setAtsEngineError(null);
       setIsAtsEngineLoading(true);
@@ -143,7 +168,6 @@ export default function Page() {
       setIsResumeReviewComplete(false);
       setResumeReviewCompletedSections([]);
       setProgress(0);
-      setIsLoadingJobListings(false);
       setSubmitError(null);
 
       const atsEnginePromise = runAtsEngine({
@@ -228,6 +252,12 @@ export default function Page() {
             aiModel,
             section,
           });
+
+          if (section === "job_search_profile") {
+            const profile =
+              payload as ResumeAnalysisResponse["jobSearchProfile"];
+            setJobSearchProfile(profile);
+          }
         },
         onSectionFailed: (section, warning) => {
           setReportData((current) => ({
@@ -270,56 +300,117 @@ export default function Page() {
     }
   };
 
-  const submitJobListingsSearch = useCallback(
-    async (profile: ResumeAnalysisResponse["jobSearchProfile"]) => {
-      if (!profile) return;
-      const trimmedOpenAiApiKey = openAiApiKey.trim();
-      if (!trimmedOpenAiApiKey) return;
-
-      try {
-        setIsLoadingJobListings(true);
-
-        const response = await fetch(apiUrl("/api/job-listings"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-OpenAI-Api-Key": trimmedOpenAiApiKey,
-          },
-          body: JSON.stringify(profile),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch job listings");
-        }
-
-        const data: JobListingsResponse = await response.json();
-        setJobListings(data);
-        clientLogger.info("job_listings_search_completed", {
-          listingCount: data.jobListings.length,
-        });
-      } catch (error) {
-        clientLogger.error("job_listings_search_failed", error, {
-          titles: profile.titles,
-          seniority: profile.seniority,
-        });
-        setJobListings(null);
-      } finally {
-        setIsLoadingJobListings(false);
-      }
-    },
-    [openAiApiKey],
-  );
-
   useEffect(() => {
-    if (!reportData?.jobSearchProfile) {
-      setJobListings(null);
+    if (!checkJobListings || !activeReviewRunId) {
       return;
     }
 
-    if (checkJobListings === true) {
-      submitJobListingsSearch(reportData.jobSearchProfile);
+    if (!jobSearchProfile) {
+      setJobListingsStatus((current) =>
+        current === "idle" ? "waiting_for_profile" : current,
+      );
+      return;
     }
-  }, [checkJobListings, reportData?.jobSearchProfile, submitJobListingsSearch]);
+
+    if (!hasUsableJobSearchProfile(jobSearchProfile)) {
+      clientLogger.warn("job_listings_search_skipped_invalid_profile");
+      setJobListingsResult(null);
+      setJobListingsError("Job listings are unavailable for this profile.");
+      setJobListingsStatus("error");
+      return;
+    }
+
+    const trimmedOpenAiApiKey = openAiApiKey.trim();
+
+    if (!trimmedOpenAiApiKey) {
+      clientLogger.warn("job_listings_search_skipped_missing_api_key");
+      setJobListingsResult(null);
+      setJobListingsError("OpenAI API key is required to search job listings.");
+      setJobListingsStatus("error");
+      return;
+    }
+
+    const profileKey = buildJobSearchProfileKey(jobSearchProfile);
+    const requestKey = `${activeReviewRunId}:${profileKey}`;
+
+    if (jobListingsRequestKeyRef.current === requestKey) {
+      return;
+    }
+
+    const controller = new AbortController();
+    jobListingsRequestKeyRef.current = requestKey;
+    setJobListingsStatus("loading");
+    setJobListingsError(null);
+
+    clientLogger.info("job_listings_search_started", {
+      status: "loading",
+      reviewRunId: activeReviewRunId,
+      requestKeyHash: buildShortHash(requestKey),
+      titleCount: jobSearchProfile.titles?.length ?? 0,
+      keywordCount: jobSearchProfile.keywords?.length ?? 0,
+      locationCount: jobSearchProfile.locations?.length ?? 0,
+      excludeCount: jobSearchProfile.exclude?.length ?? 0,
+      hasSeniority: Boolean(jobSearchProfile.seniority?.trim()),
+      ...(process.env.NODE_ENV === "production"
+        ? {}
+        : {
+            titles: jobSearchProfile.titles ?? [],
+            keywords: jobSearchProfile.keywords ?? [],
+            seniority: jobSearchProfile.seniority ?? "",
+            locations: jobSearchProfile.locations ?? [],
+            exclude: jobSearchProfile.exclude ?? [],
+          }),
+    });
+
+    submitJobListingsSearch({
+      openAiApiKey: trimmedOpenAiApiKey,
+      profile: jobSearchProfile,
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (
+          controller.signal.aborted ||
+          currentReviewRunIdRef.current !== activeReviewRunId ||
+          jobListingsRequestKeyRef.current !== requestKey
+        ) {
+          return;
+        }
+
+        const listingCount = data.jobListings?.length ?? 0;
+        setJobListingsResult(data);
+        setJobListingsStatus(listingCount > 0 ? "success" : "empty");
+        clientLogger.info("job_listings_search_completed", {
+          listingCount,
+        });
+      })
+      .catch((error) => {
+        if (
+          controller.signal.aborted ||
+          currentReviewRunIdRef.current !== activeReviewRunId ||
+          jobListingsRequestKeyRef.current !== requestKey
+        ) {
+          return;
+        }
+
+        clientLogger.error("job_listings_search_failed", error, {
+          titleCount: jobSearchProfile.titles?.length ?? 0,
+          keywordCount: jobSearchProfile.keywords?.length ?? 0,
+          locationCount: jobSearchProfile.locations?.length ?? 0,
+          hasSeniority: Boolean(jobSearchProfile.seniority?.trim()),
+        });
+        setJobListingsResult(null);
+        setJobListingsError(
+          error instanceof Error
+            ? error.message
+            : "Job listings search failed.",
+        );
+        setJobListingsStatus("error");
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeReviewRunId, checkJobListings, jobSearchProfile, openAiApiKey]);
 
   const [progress, setProgress] = useState(0);
 
@@ -436,7 +527,8 @@ export default function Page() {
                   <RecommendationsSkeleton />
                 )}
 
-                {isLoadingJobListings && (
+                {/* JOB SEARCH  */}
+                {jobListingsStatus === "loading" && (
                   <div className="w-full flex flex-col gap-2 items-start justify-center px-12 py-2">
                     <ShimmerText className="text-muted-foreground text-sm">
                       <Typewriter
@@ -451,12 +543,30 @@ export default function Page() {
                     <RecommendedListingsSkeleton />
                   </div>
                 )}
-                {jobListings?.jobListings &&
-                  jobListings.jobListings.length > 0 && (
+
+                {jobListingsResult?.jobListings &&
+                  jobListingsResult.jobListings.length > 0 && (
                     <RecommendedListings
-                      jobListings={jobListings.jobListings}
+                      jobListings={jobListingsResult.jobListings}
                     />
                   )}
+
+                {jobListingsStatus === "empty" && (
+                  <div
+                    className="rounded-md border border-muted bg-muted/30 p-3 text-sm text-muted-foreground"
+                    role="status"
+                  >
+                    No matching job listings found right now.
+                  </div>
+                )}
+                {jobListingsError && jobListingsStatus !== "loading" && (
+                  <div
+                    className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {jobListingsError}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -496,4 +606,26 @@ function applyResumeReviewSection(
         jobSearchProfile: payload as ResumeAnalysisResponse["jobSearchProfile"],
       };
   }
+}
+
+function buildJobSearchProfileKey(
+  profile: ResumeAnalysisResponse["jobSearchProfile"],
+) {
+  return JSON.stringify({
+    titles: profile.titles ?? [],
+    keywords: profile.keywords ?? [],
+    seniority: profile.seniority ?? "",
+    locations: profile.locations ?? [],
+    exclude: profile.exclude ?? [],
+  });
+}
+
+function buildShortHash(value: string) {
+  let hash = 5381;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+
+  return (hash >>> 0).toString(16);
 }

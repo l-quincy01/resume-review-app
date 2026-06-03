@@ -126,6 +126,60 @@ export function buildResumeReviewStreamBody() {
   ].join("");
 }
 
+export function buildResumeReviewStreamBodyWithCompletedPayloadMissingProfile() {
+  const completedPayload = { ...resumeReviewResponse, jobSearchProfile: undefined };
+
+  return [
+    sse("review_started", {
+      completed_sections: [],
+      timestamp: new Date().toISOString(),
+    }),
+    sse("section_completed", {
+      section: "ats_content",
+      payload: resumeReviewResponse.atsContent,
+      completed_sections: ["ats_content"],
+      timestamp: new Date().toISOString(),
+    }),
+    sse("section_completed", {
+      section: "spelling_and_grammar",
+      payload: resumeReviewResponse.spellingAndGrammar,
+      completed_sections: ["ats_content", "spelling_and_grammar"],
+      timestamp: new Date().toISOString(),
+    }),
+    sse("section_completed", {
+      section: "job_recommendation",
+      payload: resumeReviewResponse.jobRecommendation,
+      completed_sections: [
+        "ats_content",
+        "spelling_and_grammar",
+        "job_recommendation",
+      ],
+      timestamp: new Date().toISOString(),
+    }),
+    sse("section_completed", {
+      section: "job_search_profile",
+      payload: resumeReviewResponse.jobSearchProfile,
+      completed_sections: [
+        "ats_content",
+        "spelling_and_grammar",
+        "job_recommendation",
+        "job_search_profile",
+      ],
+      timestamp: new Date().toISOString(),
+    }),
+    sse("review_completed", {
+      payload: completedPayload,
+      completed_sections: [
+        "ats_content",
+        "spelling_and_grammar",
+        "job_recommendation",
+        "job_search_profile",
+      ],
+      timestamp: new Date().toISOString(),
+    }),
+  ].join("");
+}
+
 export function buildResumeReviewStreamBodyWithSectionFailure() {
   return [
     sse("review_started", {

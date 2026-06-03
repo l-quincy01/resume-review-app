@@ -59,8 +59,6 @@ jobs:
             AZURE_CONTAINER_APP_ENV
             AZURE_WEB_APP_NAME
             AZURE_API_APP_NAME
-            WEB_BASE_URL
-            API_BASE_URL
           )
 
           for name in "${required_vars[@]}"; do
@@ -70,12 +68,12 @@ jobs:
             fi
           done
 
-          if [[ "${WEB_BASE_URL}" != https://* ]]; then
+          if [[ -n "${WEB_BASE_URL:-}" && "${WEB_BASE_URL}" != https://* ]]; then
             echo "WEB_BASE_URL must be an HTTPS origin in production." >&2
             exit 2
           fi
 
-          if [[ "${API_BASE_URL}" != https://* ]]; then
+          if [[ -n "${API_BASE_URL:-}" && "${API_BASE_URL}" != https://* ]]; then
             echo "API_BASE_URL must be an HTTPS origin in production." >&2
             exit 2
           fi
@@ -111,7 +109,7 @@ jobs:
               registryName="${AZURE_CONTAINER_REGISTRY}" \
               environmentName="${AZURE_CONTAINER_APP_ENV}"
 
-      - name: Build and push images
+      - name: Build and push API image
         id: images
         shell: bash
         run: |
@@ -126,56 +124,34 @@ jobs:
           az acr login --name "${AZURE_CONTAINER_REGISTRY}"
 
           api_image="${acr_login_server}/resume-review-api:${GITHUB_SHA}"
-          web_image="${acr_login_server}/resume-review-web:${GITHUB_SHA}"
 
           docker build \
             --file apps/api/Dockerfile \
             --tag "${api_image}" \
             .
 
-          docker build \
-            --file apps/web/Dockerfile \
-            --build-arg "NEXT_PUBLIC_API_BASE=${API_BASE_URL}" \
-            --build-arg "LOG_LEVEL=${LOG_LEVEL:-info}" \
-            --tag "${web_image}" \
-            .
-
           docker push "${api_image}"
-          docker push "${web_image}"
 
-          echo "api-image=${api_image}" >> "${GITHUB_OUTPUT}"
-          echo "web-image=${web_image}" >> "${GITHUB_OUTPUT}"
+          echo "acr_login_server=${acr_login_server}" >> "${GITHUB_OUTPUT}"
+          echo "api_image=${api_image}" >> "${GITHUB_OUTPUT}"
 
-      - name: Deploy container apps
+      - name: Deploy API bootstrap
+        id: api_bootstrap
         shell: bash
         run: |
           set -euo pipefail
 
-          api_host="${API_BASE_URL#https://}"
-          api_host="${api_host#http://}"
-          api_host="${api_host%%/*}"
-          allowed_hosts="${API_ALLOWED_HOSTS:-${api_host}}"
-
           az deployment group create \
             --resource-group "${AZURE_RESOURCE_GROUP}" \
-            --template-file infra/azure-container-apps/container-apps.bicep \
+            --template-file infra/azure-container-apps/api-container-app.bicep \
             --parameters \
               location="${AZURE_LOCATION:-eastus}" \
               registryName="${AZURE_CONTAINER_REGISTRY}" \
               environmentName="${AZURE_CONTAINER_APP_ENV}" \
-              webAppName="${AZURE_WEB_APP_NAME}" \
               apiAppName="${AZURE_API_APP_NAME}" \
-              webImage="${{ steps.images.outputs.web-image }}" \
-              apiImage="${{ steps.images.outputs.api-image }}" \
-              webBaseUrl="${WEB_BASE_URL}" \
-              apiBaseUrl="${API_BASE_URL}" \
-              apiAllowedHosts="${allowed_hosts}" \
-              logLevel="${LOG_LEVEL:-info}"
-
-      - name: Smoke test deployed apps
-        shell: bash
-        run: |
-          set -euo pipefail
+              apiImage="${{ steps.images.outputs.api_image }}" \
+              webBaseUrl="${WEB_BASE_URL:-https://bootstrap.invalid}" \
+              apiAllowedHosts="${API_ALLOWED_HOSTS:-*}"
 
           api_fqdn="$(az containerapp show \
             --resource-group "${AZURE_RESOURCE_GROUP}" \
@@ -183,18 +159,89 @@ jobs:
             --query properties.configuration.ingress.fqdn \
             --output tsv)"
 
+          resolved_api_base_url="${API_BASE_URL:-https://${api_fqdn}}"
+
+          echo "api_fqdn=${api_fqdn}" >> "${GITHUB_OUTPUT}"
+          echo "api_base_url=${resolved_api_base_url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push web image
+        id: web_image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          web_image="${{ steps.images.outputs.acr_login_server }}/resume-review-web:${GITHUB_SHA}"
+
+          docker build \
+            --file apps/web/Dockerfile \
+            --build-arg "NEXT_PUBLIC_API_BASE=${{ steps.api_bootstrap.outputs.api_base_url }}" \
+            --build-arg "LOG_LEVEL=${LOG_LEVEL:-info}" \
+            --tag "${web_image}" \
+            .
+
+          docker push "${web_image}"
+
+          echo "web_image=${web_image}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy web app
+        id: web_deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --template-file infra/azure-container-apps/web-container-app.bicep \
+            --parameters \
+              location="${AZURE_LOCATION:-eastus}" \
+              registryName="${AZURE_CONTAINER_REGISTRY}" \
+              environmentName="${AZURE_CONTAINER_APP_ENV}" \
+              webAppName="${AZURE_WEB_APP_NAME}" \
+              webImage="${{ steps.web_image.outputs.web_image }}" \
+              apiBaseUrl="${{ steps.api_bootstrap.outputs.api_base_url }}" \
+              logLevel="${LOG_LEVEL:-info}"
+
           web_fqdn="$(az containerapp show \
             --resource-group "${AZURE_RESOURCE_GROUP}" \
             --name "${AZURE_WEB_APP_NAME}" \
             --query properties.configuration.ingress.fqdn \
             --output tsv)"
 
-          curl --fail --silent --show-error "https://${api_fqdn}/health/live" >/dev/null
-          curl --fail --silent --show-error "https://${api_fqdn}/health/ready" >/dev/null
-          curl --fail --silent --show-error --head "https://${web_fqdn}" >/dev/null
+          resolved_web_base_url="${WEB_BASE_URL:-https://${web_fqdn}}"
 
-          echo "API: https://${api_fqdn}"
-          echo "Web: https://${web_fqdn}"
+          echo "web_fqdn=${web_fqdn}" >> "${GITHUB_OUTPUT}"
+          echo "web_base_url=${resolved_web_base_url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Finalize API CORS and host settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_allowed_hosts="${API_ALLOWED_HOSTS:-${{ steps.api_bootstrap.outputs.api_fqdn }}}"
+
+          az deployment group create \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --template-file infra/azure-container-apps/api-container-app.bicep \
+            --parameters \
+              location="${AZURE_LOCATION:-eastus}" \
+              registryName="${AZURE_CONTAINER_REGISTRY}" \
+              environmentName="${AZURE_CONTAINER_APP_ENV}" \
+              apiAppName="${AZURE_API_APP_NAME}" \
+              apiImage="${{ steps.images.outputs.api_image }}" \
+              webBaseUrl="${{ steps.web_deploy.outputs.web_base_url }}" \
+              apiAllowedHosts="${api_allowed_hosts}"
+
+      - name: Smoke test deployed apps
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error "${{ steps.api_bootstrap.outputs.api_base_url }}/health/live" >/dev/null
+          curl --fail --silent --show-error "${{ steps.api_bootstrap.outputs.api_base_url }}/health/ready" >/dev/null
+          curl --fail --silent --show-error --head "${{ steps.web_deploy.outputs.web_base_url }}" >/dev/null
+
+          echo "API: ${{ steps.api_bootstrap.outputs.api_base_url }}"
+          echo "Web: ${{ steps.web_deploy.outputs.web_base_url }}"
 
       - name: Check edge API key redaction
         if: ${{ vars.EDGE_LOG_SEARCH_COMMAND != '' }}
@@ -205,11 +252,5 @@ jobs:
         run: |
           set -euo pipefail
 
-          api_fqdn="$(az containerapp show \
-            --resource-group "${AZURE_RESOURCE_GROUP}" \
-            --name "${AZURE_API_APP_NAME}" \
-            --query properties.configuration.ingress.fqdn \
-            --output tsv)"
-
-          API_BASE_URL="https://${api_fqdn}" \
+          API_BASE_URL="${{ steps.api_bootstrap.outputs.api_base_url }}" \
             bash scripts/security/check-edge-key-redaction.sh

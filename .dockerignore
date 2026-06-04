@@ -5,6 +5,8 @@
 **/.turbo
 **/bin
 **/build
+!apps/web/public/pdfjs/build
+!apps/web/public/pdfjs/build/**
 **/coverage
 **/dist
 **/node_modules

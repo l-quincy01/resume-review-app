@@ -37,6 +37,14 @@ test.describe("resume review flow", () => {
 
     await expect(page.getByText("Test Candidate Resume Review Report")).toBeVisible();
     await expect(page.getByText("Jobs To Look Out For")).toBeVisible();
+    await expect(page.locator('iframe[title="PDF.js"]')).toHaveAttribute(
+      "src",
+      /\/pdfjs\/web\/viewer\.html\?file=/,
+    );
+    await expect(page.locator('iframe[title="PDF.js"]')).not.toHaveAttribute(
+      "src",
+      /blob:/,
+    );
     expect(sawMultipartRequest).toBe(true);
     expect(sawApiKeyHeader).toBe(true);
     expect(sawApiKeyInBody).toBe(false);

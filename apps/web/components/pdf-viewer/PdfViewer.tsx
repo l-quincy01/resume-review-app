@@ -8,6 +8,7 @@ interface props {
 
 export default function PdfViewer({ pdfUrl }: props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const { systemTheme } = useTheme();
   const [isDark, setIsDark] = useState<boolean>(systemTheme === "dark");
@@ -46,7 +47,7 @@ export default function PdfViewer({ pdfUrl }: props) {
       const doc = iframe.contentDocument;
       if (!doc) return;
 
-      // 1) Inject CSS overrides
+      //  CSS overrides
       const id = "my-pdfjs-overrides";
       doc.getElementById(id)?.remove();
       const style = doc.createElement("style");
@@ -222,13 +223,13 @@ export default function PdfViewer({ pdfUrl }: props) {
               "pdfjs-theme",
               nowDark ? "dark" : "light",
             );
-          } catch (err) {
-            console.log("pdf viewer error:" + err);
+          } catch {
+            return;
           }
         });
       }
 
-      // 3) Apply  initial theme
+      //   initial theme
       applySavedTheme(doc);
     };
 
@@ -246,9 +247,81 @@ export default function PdfViewer({ pdfUrl }: props) {
     };
   }, [isDark]);
 
-  const viewerUrl = `/pdfjs/web/viewer.html?file=${encodeURIComponent(
-    pdfUrl,
-  )}#pagemode=thumbs&zoom=page-width`;
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !pdfUrl) return;
+
+    let isCancelled = false;
+
+    const sendPdfToViewer = async () => {
+      try {
+        setLoadError(null);
+
+        const response = await fetch(pdfUrl);
+        if (!response.ok) {
+          throw new Error("Unable to read the selected PDF.");
+        }
+
+        const buffer = await response.arrayBuffer();
+        if (isCancelled) {
+          return;
+        }
+
+        iframe.contentWindow?.postMessage(
+          {
+            type: "resume-review:open-pdf",
+            bytes: new Uint8Array(buffer),
+            filename: "resume.pdf",
+          },
+          window.location.origin,
+        );
+      } catch {
+        if (!isCancelled) {
+          setLoadError("The PDF could not be loaded in the viewer.");
+        }
+      }
+    };
+
+    const onViewerLoad = () => {
+      void sendPdfToViewer();
+    };
+
+    iframe.addEventListener("load", onViewerLoad);
+
+    if (iframe.contentDocument?.readyState === "complete") {
+      void sendPdfToViewer();
+    }
+
+    return () => {
+      isCancelled = true;
+      iframe.removeEventListener("load", onViewerLoad);
+    };
+  }, [pdfUrl]);
+
+  useEffect(() => {
+    const onViewerError = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const message = event.data;
+      if (!message || message.type !== "resume-review:pdf-error") {
+        return;
+      }
+
+      setLoadError(
+        message.message || "The PDF could not be loaded in the viewer.",
+      );
+    };
+
+    window.addEventListener("message", onViewerError);
+
+    return () => {
+      window.removeEventListener("message", onViewerError);
+    };
+  }, []);
+
+  const viewerUrl = `/pdfjs/web/viewer.html?file=#pagemode=thumbs&zoom=page-width`;
 
   return (
     <div style={{ position: "relative", height: "90vh" }}>
@@ -258,6 +331,14 @@ export default function PdfViewer({ pdfUrl }: props) {
         src={viewerUrl}
         style={{ width: "100%", height: "100%", border: 0 }}
       />
+      {loadError && (
+        <div
+          role="alert"
+          className="absolute left-3 right-3 top-3 rounded-md border border-destructive/30 bg-background/95 p-3 text-sm text-destructive shadow-sm"
+        >
+          {loadError}
+        </div>
+      )}
     </div>
   );
 }

@@ -273,9 +273,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          curl --fail --silent --show-error "${{ steps.api_bootstrap.outputs.api_base_url }}/health/live" >/dev/null
-          curl --fail --silent --show-error "${{ steps.api_bootstrap.outputs.api_base_url }}/health/ready" >/dev/null
-          curl --fail --silent --show-error --head "${{ steps.web_deploy.outputs.web_base_url }}" >/dev/null
+          wait_for_url() {
+            local url="$1"
+            local method="${2:-GET}"
+            local attempts=30
+            local delay_seconds=10
+
+            for attempt in $(seq 1 "${attempts}"); do
+              if curl \
+                --fail \
+                --silent \
+                --show-error \
+                --max-time 20 \
+                --request "${method}" \
+                "${url}" >/dev/null; then
+                return 0
+              fi
+
+              echo "Smoke check failed for ${url}. Attempt ${attempt}/${attempts}. Retrying in ${delay_seconds}s..."
+              sleep "${delay_seconds}"
+            done
+
+            echo "Smoke check failed after ${attempts} attempts: ${url}" >&2
+            return 1
+          }
+
+          wait_for_url "${{ steps.api_bootstrap.outputs.api_base_url }}/health/live"
+          wait_for_url "${{ steps.api_bootstrap.outputs.api_base_url }}/health/ready"
+          wait_for_url "${{ steps.web_deploy.outputs.web_base_url }}" HEAD
 
           echo "API: ${{ steps.api_bootstrap.outputs.api_base_url }}"
           echo "Web: ${{ steps.web_deploy.outputs.web_base_url }}"

@@ -335,15 +335,21 @@ jobs:
             local method="${2:-GET}"
             local attempts=30
             local delay_seconds=10
+            local curl_args=(
+              --fail
+              --silent
+              --show-error
+              --max-time 20
+            )
+
+            if [[ "${method}" == "HEAD" ]]; then
+              curl_args+=(--head)
+            else
+              curl_args+=(--request "${method}")
+            fi
 
             for attempt in $(seq 1 "${attempts}"); do
-              if curl \
-                --fail \
-                --silent \
-                --show-error \
-                --max-time 20 \
-                --request "${method}" \
-                "${url}" >/dev/null; then
+              if curl "${curl_args[@]}" "${url}" >/dev/null; then
                 return 0
               fi
 

@@ -268,6 +268,63 @@ jobs:
               webBaseUrl="${{ steps.web_deploy.outputs.web_base_url }}" \
               apiAllowedHosts="${api_allowed_hosts}"
 
+      - name: Bind custom domains
+        if: ${{ vars.WEB_BASE_URL != '' || vars.API_BASE_URL != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          hostname_from_url() {
+            local url="$1"
+            local hostname="${url#https://}"
+            hostname="${hostname%%/*}"
+            echo "${hostname}"
+          }
+
+          bind_hostname() {
+            local app_name="$1"
+            local hostname="$2"
+
+            if [[ -z "${hostname}" ]]; then
+              return 0
+            fi
+
+            local existing_count
+            existing_count="$(az containerapp hostname list \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${app_name}" \
+              --query "[?name=='${hostname}'] | length(@)" \
+              --output tsv)"
+
+            if [[ "${existing_count}" == "0" ]]; then
+              az containerapp hostname add \
+                --resource-group "${AZURE_RESOURCE_GROUP}" \
+                --name "${app_name}" \
+                --hostname "${hostname}"
+            fi
+
+            az containerapp hostname bind \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${app_name}" \
+              --hostname "${hostname}" \
+              --environment "${AZURE_CONTAINER_APP_ENV}" \
+              --validation-method CNAME
+          }
+
+          web_hostname=""
+          api_hostname=""
+
+          if [[ -n "${WEB_BASE_URL:-}" ]]; then
+            web_hostname="$(hostname_from_url "${WEB_BASE_URL}")"
+          fi
+
+          if [[ -n "${API_BASE_URL:-}" ]]; then
+            api_hostname="$(hostname_from_url "${API_BASE_URL}")"
+          fi
+
+          bind_hostname "${AZURE_WEB_APP_NAME}" "${web_hostname}"
+          bind_hostname "${AZURE_API_APP_NAME}" "${api_hostname}"
+
       - name: Smoke test deployed apps
         shell: bash
         run: |

@@ -103,16 +103,26 @@ The workflow will:
 
 ## 5. Configure Domains
 
-In Azure Portal, add custom domains to the two Container Apps:
+In Cloudflare or your DNS provider, create validation and routing records for the two Container Apps:
 
 ```txt
-app.your-domain.com -> resume-review-web
-api.your-domain.com -> resume-review-api
+www.your-domain.com -> resume-review-web generated Azure hostname
+api.your-domain.com -> resume-review-api generated Azure hostname
+asuid.www -> web Container App domain verification ID
+asuid.api -> API Container App domain verification ID
 ```
 
-Follow Azure's requested DNS records and enable managed certificates for both domains.
+For subdomains such as `www` and `api`, use CNAME records and keep them DNS-only if you use Cloudflare. Azure managed certificates require the CNAME to map directly to the Container App generated hostname.
 
-After custom domains are active, confirm the GitHub variables match the final domains and rerun the workflow so the web image is rebuilt with the final `API_BASE_URL` and the API CORS origin is updated to the final `WEB_BASE_URL`.
+After DNS is in place, set the final GitHub variables and rerun the workflow:
+
+```txt
+WEB_BASE_URL=https://www.your-domain.com
+API_BASE_URL=https://api.your-domain.com
+API_ALLOWED_HOSTS=api.your-domain.com
+```
+
+The workflow binds the custom hostnames to the Container Apps and creates Azure managed certificates with CNAME validation. Keep custom domains in the workflow variables instead of only adding them manually in the Azure Portal; redeploying a Container App from Bicep can replace ingress settings and remove portal-only custom domain bindings.
 
 ## 6. Verify Production Security
 

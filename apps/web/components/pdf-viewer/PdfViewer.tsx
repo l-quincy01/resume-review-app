@@ -47,7 +47,7 @@ export default function PdfViewer({ pdfUrl }: props) {
       const doc = iframe.contentDocument;
       if (!doc) return;
 
-      // 1) Inject CSS overrides
+      //  CSS overrides
       const id = "my-pdfjs-overrides";
       doc.getElementById(id)?.remove();
       const style = doc.createElement("style");
@@ -223,11 +223,13 @@ export default function PdfViewer({ pdfUrl }: props) {
               "pdfjs-theme",
               nowDark ? "dark" : "light",
             );
-          } catch {}
+          } catch {
+            return;
+          }
         });
       }
 
-      // 3) Apply  initial theme
+      //   initial theme
       applySavedTheme(doc);
     };
 
@@ -307,7 +309,9 @@ export default function PdfViewer({ pdfUrl }: props) {
         return;
       }
 
-      setLoadError(message.message || "The PDF could not be loaded in the viewer.");
+      setLoadError(
+        message.message || "The PDF could not be loaded in the viewer.",
+      );
     };
 
     window.addEventListener("message", onViewerError);

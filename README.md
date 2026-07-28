@@ -133,25 +133,7 @@ sequenceDiagram
     API-->>FE: SSE review_completed event
 ```
 
-## Streamed Resume Review
 
-The resume review produces four focused sections:
-
-- ATS-oriented content feedback
-- Spelling and grammar analysis
-- Job-role recommendations
-- Job-search profile
-
-The API emits:
-
-```text
-section_started
-section_completed
-section_failed
-review_completed
-```
-
-This allows the frontend to display useful results before every AI task has finished.
 
 ## ATS Scoring Pipeline
 
@@ -293,23 +275,7 @@ sequenceDiagram
 
 The application does not implement user accounts or session authentication. The user API key authorises only the outbound OpenAI operation for the current request.
 
-## API
 
-Unversioned `/api/...` routes remain available as backward-compatible aliases. New integrations should use `/api/v1/...`.
-
-| Method | Route | Purpose |
-|---|---|---|
-| `GET` | `/health/live` | Process liveness |
-| `GET` | `/health/ready` | Lightweight readiness |
-| `POST` | `/api/v1/resume-review/stream` | Progressive resume review |
-| `POST` | `/api/v1/job-listings` | GPT-5 web job search |
-| `POST` | `/api/v1/ats-engine/header-validation` | Resume structure validation |
-| `POST` | `/api/v1/ats-engine/keyword-extraction` | Job-description keyword extraction |
-| `POST` | `/api/v1/ats-engine/keyword-analysis` | Resume keyword context analysis |
-| `POST` | `/api/v1/ats-engine/keyword-scoring` | Deterministic keyword scoring |
-| `POST` | `/api/v1/ats-engine/final-assessment` | Final ATS assessment |
-
-The readiness endpoint deliberately does not call OpenAI.
 
 ## Tech Stack
 
